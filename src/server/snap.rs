@@ -120,6 +120,7 @@ pub struct SendStat {
 /// Send the snapshot to specified address.
 ///
 /// It will first send the normal raft snapshot message and then send the snapshot file.
+// INSTRUMENT_FUNC
 pub fn send_snap(
     env: Arc<Environment>,
     mgr: SnapManager,
@@ -270,6 +271,7 @@ impl RecvSnapContext {
     }
 }
 
+// INSTRUMENT_FUNC
 fn recv_snap<R: RaftStoreRouter<impl KvEngine> + 'static>(
     stream: RequestStream<SnapshotChunk>,
     sink: ClientStreamingSink<Done>,
@@ -401,6 +403,7 @@ where
     fn run(&mut self, task: Task) {
         match task {
             Task::Recv { stream, sink } => {
+                // INSTRUMENT_BB
                 let task_num = self.recving_count.load(Ordering::SeqCst);
                 if task_num >= self.cfg.concurrent_recv_snap_limit {
                     warn!("too many recving snapshot tasks, ignore");
@@ -430,6 +433,7 @@ where
                 self.pool.spawn(task);
             }
             Task::Send { addr, msg, cb } => {
+                // INSTRUMENT_BB
                 fail_point!("send_snapshot");
                 if self.sending_count.load(Ordering::SeqCst) >= self.cfg.concurrent_send_snap_limit
                 {
@@ -476,9 +480,11 @@ where
                 self.pool.spawn(task);
             }
             Task::RefreshConfigEvent => {
+                // INSTRUMENT_BB
                 self.refresh_cfg();
             }
             Task::Validate(f) => {
+                // INSTRUMENT_BB
                 f(&self.cfg);
             }
         }

@@ -292,6 +292,7 @@ where
                 Err(e) => {
                     if let Some(e) = e.downcast_ref::<std::io::Error>() {
                         make_response(
+                            // INSTRUMENT_BB
                             StatusCode::INTERNAL_SERVER_ERROR,
                             format!(
                                 "config changed, but failed to persist change due to err: {:?}",
@@ -299,6 +300,7 @@ where
                             ),
                         )
                     } else {
+                        // INSTRUMENT_BB
                         make_response(
                             StatusCode::INTERNAL_SERVER_ERROR,
                             format!("failed to update, error: {:?}", e),
@@ -306,12 +308,14 @@ where
                     }
                 }
                 Ok(_) => {
+                    // INSTRUMENT_BB
                     let mut resp = Response::default();
                     *resp.status_mut() = StatusCode::OK;
                     resp
                 }
             },
             Err(e) => make_response(
+                // INSTRUMENT_BB
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("failed to decode, error: {:?}", e),
             ),

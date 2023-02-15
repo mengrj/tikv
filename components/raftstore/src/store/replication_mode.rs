@@ -27,6 +27,7 @@ impl StoreGroup {
     ///
     /// When using majority mode, labels still need to be backup for future
     /// usage. Should only call it in majority mode.
+    // INSTRUMENT_FUNC
     pub fn backup_store_labels(&mut self, store: &mut metapb::Store) {
         if self
             .labels
@@ -47,6 +48,7 @@ impl StoreGroup {
     /// # Panics
     ///
     /// Panics if the store is registered twice with different store ID.
+    // INSTRUMENT_FUNC
     pub fn register_store(
         &mut self,
         store_id: u64,
@@ -179,12 +181,16 @@ impl GlobalReplicationState {
     pub fn store_dr_autosync_status(&self) -> Option<StoreDrAutoSyncStatus> {
         match self.status.get_mode() {
             ReplicationMode::DrAutoSync => {
+                // INSTRUMENT_BB
                 let mut s = StoreDrAutoSyncStatus::new();
                 s.set_state(self.status.get_dr_auto_sync().get_state());
                 s.set_state_id(self.status.get_dr_auto_sync().get_state_id());
                 Some(s)
             }
-            ReplicationMode::Majority => None,
+            ReplicationMode::Majority => {
+                // INSTRUMENT_BB
+                None
+            }
         }
     }
 }

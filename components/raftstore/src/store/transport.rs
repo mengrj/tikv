@@ -68,7 +68,9 @@ where
     EK: KvEngine,
     ER: RaftEngine,
 {
+    
     #[inline]
+    // INSTRUMENT_FUNC
     fn send(&self, region_id: u64, msg: CasualMessage<EK>) -> Result<()> {
         match self.router.send(region_id, PeerMsg::CasualMessage(msg)) {
             Ok(()) => Ok(()),
@@ -84,6 +86,7 @@ where
     ER: RaftEngine,
 {
     #[inline]
+    // INSTRUMENT_FUNC
     fn significant_send(&self, region_id: u64, msg: SignificantMsg<EK::Snapshot>) -> Result<()> {
         if let Err(SendError(msg)) = self
             .router
@@ -104,6 +107,7 @@ where
     ER: RaftEngine,
 {
     #[inline]
+    // INSTRUMENT_FUNC
     fn send(
         &self,
         cmd: RaftCommand<EK::Snapshot>,
@@ -118,6 +122,7 @@ where
     ER: RaftEngine,
 {
     #[inline]
+    // INSTRUMENT_FUNC
     fn send(&self, msg: StoreMsg<EK>) -> Result<()> {
         match self.send_control(msg) {
             Ok(()) => Ok(()),
@@ -133,6 +138,7 @@ impl<EK> CasualRouter<EK> for mpsc::SyncSender<(u64, CasualMessage<EK>)>
 where
     EK: KvEngine,
 {
+    // INSTRUMENT_FUNC
     fn send(&self, region_id: u64, msg: CasualMessage<EK>) -> Result<()> {
         match self.try_send((region_id, msg)) {
             Ok(()) => Ok(()),
@@ -145,6 +151,7 @@ where
 }
 
 impl<S: Snapshot> ProposalRouter<S> for mpsc::SyncSender<RaftCommand<S>> {
+    // INSTRUMENT_FUNC
     fn send(&self, cmd: RaftCommand<S>) -> std::result::Result<(), TrySendError<RaftCommand<S>>> {
         match self.try_send(cmd) {
             Ok(()) => Ok(()),
@@ -158,6 +165,7 @@ impl<EK> StoreRouter<EK> for mpsc::Sender<StoreMsg<EK>>
 where
     EK: KvEngine,
 {
+    // INSTRUMENT_FUNC
     fn send(&self, msg: StoreMsg<EK>) -> Result<()> {
         match self.send(msg) {
             Ok(()) => Ok(()),

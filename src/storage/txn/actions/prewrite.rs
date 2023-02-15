@@ -22,6 +22,7 @@ use crate::storage::{
 };
 
 /// Prewrite a single mutation by creating and storing a lock and value.
+// INSTRUMENT_FUNC
 pub fn prewrite<S: Snapshot>(
     txn: &mut MvccTxn,
     reader: &mut SnapshotReader<S>,

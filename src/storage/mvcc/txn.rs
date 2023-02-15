@@ -95,20 +95,24 @@ impl MvccTxn {
         self.write_size
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn put_lock(&mut self, key: Key, lock: &Lock) {
         let write = Modify::Put(CF_LOCK, key, lock.to_bytes());
         self.write_size += write.size();
         self.modifies.push(write);
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn put_locks_for_1pc(&mut self, key: Key, lock: Lock, remove_pessimstic_lock: bool) {
         self.locks_for_1pc.push((key, lock, remove_pessimstic_lock));
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn put_pessimistic_lock(&mut self, key: Key, lock: PessimisticLock) {
         self.modifies.push(Modify::PessimisticLock(key, lock))
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn unlock_key(&mut self, key: Key, pessimistic: bool) -> Option<ReleasedLock> {
         let released = ReleasedLock::new(&key, pessimistic);
         let write = Modify::Delete(CF_LOCK, key);
@@ -117,24 +121,28 @@ impl MvccTxn {
         Some(released)
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn put_value(&mut self, key: Key, ts: TimeStamp, value: Value) {
         let write = Modify::Put(CF_DEFAULT, key.append_ts(ts), value);
         self.write_size += write.size();
         self.modifies.push(write);
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn delete_value(&mut self, key: Key, ts: TimeStamp) {
         let write = Modify::Delete(CF_DEFAULT, key.append_ts(ts));
         self.write_size += write.size();
         self.modifies.push(write);
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn put_write(&mut self, key: Key, ts: TimeStamp, value: Value) {
         let write = Modify::Put(CF_WRITE, key.append_ts(ts), value);
         self.write_size += write.size();
         self.modifies.push(write);
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn delete_write(&mut self, key: Key, ts: TimeStamp) {
         let write = Modify::Delete(CF_WRITE, key.append_ts(ts));
         self.write_size += write.size();
@@ -149,6 +157,7 @@ impl MvccTxn {
     /// break consistency. To solve the problem, add the timestamp of the current rollback to the
     /// lock. So when the lock is committed, it can check if it will overwrite a rollback record
     /// by checking the information in the lock.
+    // INSTRUMENT_FUNC
     pub(crate) fn mark_rollback_on_mismatching_lock(
         &mut self,
         key: &Key,
@@ -177,6 +186,7 @@ impl MvccTxn {
         self.put_lock(key.clone(), &lock);
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn clear(&mut self) {
         self.write_size = 0;
         self.modifies.clear();

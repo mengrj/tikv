@@ -1029,6 +1029,7 @@ where
     }
 
     /// Updates replication mode.
+    // INSTRUMENT_FUNC
     pub fn switch_replication_mode(&mut self, state: &Mutex<GlobalReplicationState>) {
         self.replication_sync = false;
         let mut guard = state.lock().unwrap();
@@ -1063,6 +1064,7 @@ where
 
     /// Register self to apply_scheduler so that the peer is then usable.
     /// Also trigger `RegionChangeEvent::Create` here.
+    // INSTRUMENT_FUNC
     pub fn activate<T>(&self, ctx: &PollContext<EK, ER, T>) {
         ctx.apply_router
             .schedule_task(self.region_id, ApplyTask::register(self));
@@ -1545,6 +1547,7 @@ where
         self.raft_group.snap()
     }
 
+    // INSTRUMENT_FUNC
     fn add_ready_metric(&self, ready: &Ready, metrics: &mut RaftReadyMetrics) {
         metrics.message += ready.messages().len() as u64;
         metrics.commit += ready.committed_entries().len() as u64;
@@ -1555,6 +1558,7 @@ where
         }
     }
 
+    // INSTRUMENT_FUNC
     fn add_light_ready_metric(&self, light_ready: &LightReady, metrics: &mut RaftReadyMetrics) {
         metrics.message += light_ready.messages().len() as u64;
         metrics.commit += light_ready.committed_entries().len() as u64;
@@ -1576,6 +1580,7 @@ where
         for msg in msgs {
             let msg_type = msg.get_message().get_msg_type();
             if msg_type == MessageType::MsgSnapshot {
+                // INSTRUMENT_BB
                 let snap_index = msg.get_message().get_snapshot().get_metadata().get_index();
                 if snap_index > self.last_sent_snapshot_idx {
                     self.last_sent_snapshot_idx = snap_index;
@@ -1588,6 +1593,7 @@ where
                 // network partition from the new leader.
                 // For lease safety during leader transfer, transit `leader_lease`
                 // to suspect.
+                // INSTRUMENT_BB
                 self.leader_lease.suspect(monotonic_raw_now());
             }
 
@@ -1605,6 +1611,7 @@ where
             );
 
             if let Err(e) = ctx.trans.send(msg) {
+                // INSTRUMENT_BB
                 // We use metrics to observe failure on production.
                 debug!(
                     "failed to send msg to other peer";
@@ -1626,6 +1633,7 @@ where
                 }
                 ctx.raft_metrics.send_message.add(msg_type, false);
             } else {
+                // INSTRUMENT_BB
                 ctx.raft_metrics.send_message.add(msg_type, true);
             }
         }
@@ -1822,6 +1830,7 @@ where
         }
         self.down_peer_ids = down_peer_ids;
         if !self.down_peer_ids.is_empty() {
+            // INSTRUMENT_BB
             self.refill_disk_full_peers(ctx);
         }
         down_peers
@@ -1980,12 +1989,14 @@ where
         // should be.
         match self.leader_missing_time {
             None => {
+                // INSTRUMENT_BB
                 self.leader_missing_time = Instant::now().into();
                 StaleState::Valid
             }
             Some(instant)
                 if instant.saturating_elapsed() >= ctx.cfg.max_leader_missing_duration.0 =>
             {
+                // INSTRUMENT_BB
                 // Resets the `leader_missing_time` to avoid sending the same tasks to
                 // PD worker continuously during the leader missing timeout.
                 self.leader_missing_time = Instant::now().into();
@@ -1995,6 +2006,7 @@ where
                 if instant.saturating_elapsed() >= ctx.cfg.abnormal_leader_missing_duration.0
                     && !naive_peer =>
             {
+                // INSTRUMENT_BB
                 // A peer is considered as in the leader missing state
                 // if it's initialized but is isolated from its leader or
                 // something bad happens that the raft group can not elect a leader.
@@ -2009,6 +2021,7 @@ where
         if let Some(ss) = ready.ss() {
             match ss.raft_state {
                 StateRole::Leader => {
+                    // INSTRUMENT_BB
                     // The local read can only be performed after a new leader has applied
                     // the first empty entry on its term. After that the lease expiring time
                     // should be updated to
@@ -2053,6 +2066,7 @@ where
                     }
                 }
                 StateRole::Follower => {
+                    // INSTRUMENT_BB
                     self.leader_lease.expire();
                     self.mut_store().cancel_generating_snap(None);
                     self.clear_disk_full_peers(ctx);
@@ -2089,6 +2103,7 @@ where
     /// then send the response. The second place is in `Step`, we should use the commit index
     /// of `PeerStorage` which is the greatest commit index that can be observed outside.
     /// The third place is in `read_index`, handle it like the second one.
+    // INSTRUMENT_FUNC
     fn on_leader_commit_idx_changed(&mut self, pre_commit_index: u64, commit_index: u64) {
         if commit_index <= pre_commit_index || !self.is_leader() {
             return;
@@ -2276,6 +2291,7 @@ where
                 //      msg to this peer, this possibility is very low. In most cases, there
                 //      is no msg need to be handled.
                 // So we choose to not get a new ready which makes the logic more clear.
+                // INSTRUMENT_BB
                 debug!(
                     "still applying snapshot, skip further handling";
                     "region_id" => self.region_id,
@@ -2284,6 +2300,7 @@ where
                 return false;
             }
             CheckApplyingSnapStatus::Success => {
+                // INSTRUMENT_BB
                 fail_point!("raft_before_applying_snap_finished");
 
                 if let Some(snap_ctx) = self.apply_snap_ctx.take() {
@@ -2332,6 +2349,7 @@ where
                 // the peer, it's still dangerous if continue to handle ready for the
                 // peer. So it's better to revoke `JOB_STATUS_CANCELLING` to ensure all
                 // started tasks can get finished correctly.
+                // INSTRUMENT_BB
                 if self.apply_snap_ctx.is_some() {
                     return false;
                 }
@@ -2529,6 +2547,7 @@ where
         let mut has_write_ready = false;
         match &res {
             HandleReadyResult::SendIOTask | HandleReadyResult::Snapshot { .. } => {
+                // INSTRUMENT_BB
                 if !persisted_msgs.is_empty() {
                     task.messages = self.build_raft_messages(ctx, persisted_msgs);
                 }
@@ -2560,6 +2579,7 @@ where
                 }
             }
             HandleReadyResult::NoIOTask => {
+                // INSTRUMENT_BB
                 if let Some(last) = self.unpersisted_readies.back_mut() {
                     // Attach to the last unpersisted ready so that it can be considered to be
                     // persisted with the last ready at the same time.
@@ -2773,6 +2793,7 @@ where
     ) -> PersistSnapshotResult {
         let snap_ctx = self.apply_snap_ctx.as_mut().unwrap();
         if snap_ctx.ready_number != number || snap_ctx.scheduled {
+            // INSTRUMENT_BB
             panic!(
                 "{} apply_snap_ctx {:?} is not valid after persisting snapshot, persist_number {}",
                 self.tag, snap_ctx, number
@@ -2819,6 +2840,7 @@ where
         }
         let last_unpersisted_number = self.unpersisted_readies.back().unwrap().number;
         if number > last_unpersisted_number {
+            // INSTRUMENT_BB
             panic!(
                 "{} persisted number {} > last_unpersisted_number {}, unpersisted numbers {:?}",
                 self.tag, number, last_unpersisted_number, self.unpersisted_readies
@@ -2868,8 +2890,10 @@ where
         if self.apply_snap_ctx.is_some() && self.unpersisted_readies.is_empty() {
             // Since the snapshot must belong to the last ready, so if `unpersisted_readies`
             // is empty, it means this persisted number is the last one.
+            // INSTRUMENT_BB
             Some(self.on_persist_snapshot(ctx, number))
         } else {
+            // INSTRUMENT_BB
             None
         }
     }
@@ -3303,15 +3327,21 @@ where
         let policy = self.inspect(&req);
         let res = match policy {
             Ok(RequestPolicy::ReadLocal) | Ok(RequestPolicy::StaleRead) => {
+                // INSTRUMENT_BB
                 self.read_local(ctx, req, cb);
                 return false;
             }
-            Ok(RequestPolicy::ReadIndex) => return self.read_index(ctx, req, err_resp, cb),
+            Ok(RequestPolicy::ReadIndex) => {
+                // INSTRUMENT_BB
+                return self.read_index(ctx, req, err_resp, cb);
+            }
             Ok(RequestPolicy::ProposeTransferLeader) => {
+                // INSTRUMENT_BB
                 return self.propose_transfer_leader(ctx, req, cb);
             }
             Ok(RequestPolicy::ProposeNormal) => {
                 // For admin cmds, only region split/merge comes here.
+                // INSTRUMENT_BB
                 let mut stores = Vec::new();
                 let mut opt = disk_full_opt;
                 let mut maybe_transfer_leader = false;
@@ -3360,19 +3390,24 @@ where
                     Err(Error::DiskFull(stores, errmsg))
                 }
             }
-            Ok(RequestPolicy::ProposeConfChange) => self.propose_conf_change(ctx, &req),
+            Ok(RequestPolicy::ProposeConfChange) => {
+                // INSTRUMENT_BB
+                self.propose_conf_change(ctx, &req);
+            }
             Err(e) => Err(e),
         };
         fail_point!("after_propose");
 
         match res {
             Err(e) => {
+                // INSTRUMENT_BB
                 cmd_resp::bind_error(&mut err_resp, e);
                 cb.invoke_with_response(err_resp);
                 self.post_propose_fail(req_admin_cmd_type);
                 false
             }
             Ok(Either::Right(idx)) => {
+                // INSTRUMENT_BB
                 if !cb.is_none() {
                     self.cmd_epoch_checker.attach_to_conflict_cmd(idx, cb);
                 }
@@ -3380,6 +3415,7 @@ where
                 false
             }
             Ok(Either::Left(idx)) => {
+                // INSTRUMENT_BB
                 let has_applied_to_current_term = self.has_applied_to_current_term();
                 if has_applied_to_current_term {
                     // After this peer has applied to current term and passed above checking including `cmd_epoch_checker`,

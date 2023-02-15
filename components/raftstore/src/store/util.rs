@@ -46,6 +46,7 @@ pub fn find_peer_mut(region: &mut metapb::Region, store_id: u64) -> Option<&mut 
         .find(|p| p.get_store_id() == store_id)
 }
 
+// INSTRUMENT_FUNC
 pub fn remove_peer(region: &mut metapb::Region, store_id: u64) -> Option<metapb::Peer> {
     region
         .get_peers()
@@ -55,6 +56,7 @@ pub fn remove_peer(region: &mut metapb::Region, store_id: u64) -> Option<metapb:
 }
 
 // a helper function to create peer easily.
+// INSTRUMENT_FUNC
 pub fn new_peer(store_id: u64, peer_id: u64) -> metapb::Peer {
     let mut peer = metapb::Peer::default();
     peer.set_store_id(store_id);
@@ -474,6 +476,7 @@ impl Lease {
     }
 
     /// Renew the lease to the bound.
+    // INSTRUMENT_FUNC
     pub fn renew(&mut self, send_ts: Timespec) {
         let bound = self.next_expired_time(send_ts);
         match self.bound {
@@ -499,6 +502,7 @@ impl Lease {
         }
     }
 
+    // INSTRUMENT_FUNC
     /// Suspect the lease to the bound.
     pub fn suspect(&mut self, send_ts: Timespec) {
         self.expire_remote_lease();
@@ -525,11 +529,13 @@ impl Lease {
         }
     }
 
+    // INSTRUMENT_FUNC
     pub fn expire(&mut self) {
         self.expire_remote_lease();
         self.bound = None;
     }
 
+    // INSTRUMENT_FUNC
     pub fn expire_remote_lease(&mut self) {
         // Expire remote lease if there is any.
         if let Some(r) = self.remote.take() {
@@ -894,6 +900,7 @@ impl RegionReadProgressRegistry {
         }
     }
 
+    // INSTRUMENT_FUNC
     pub fn insert(
         &self,
         region_id: u64,
@@ -905,6 +912,7 @@ impl RegionReadProgressRegistry {
             .insert(region_id, read_progress)
     }
 
+    // INSTRUMENT_FUNC
     pub fn remove(&self, region_id: &u64) -> Option<Arc<RegionReadProgress>> {
         self.registry.lock().unwrap().remove(region_id)
     }
@@ -938,6 +946,7 @@ impl RegionReadProgressRegistry {
     }
 
     // Get the `LeaderInfo` of the requested regions
+    // INSTRUMENT_FUNC
     pub fn dump_leader_infos(&self, regions: &[u64]) -> HashMap<u64, (Vec<Peer>, LeaderInfo)> {
         let registry = self.registry.lock().unwrap();
         let mut info_map = HashMap::with_capacity(regions.len());
@@ -1038,6 +1047,7 @@ impl RegionReadProgress {
 
     // Consume the provided `LeaderInfo` to update `safe_ts` and return whether the provided
     // `LeaderInfo` is same as ours
+    // INSTRUMENT_FUNC
     pub fn consume_leader_info(&self, mut leader_info: LeaderInfo) -> bool {
         let mut core = self.core.lock().unwrap();
         if leader_info.has_read_state() {
@@ -1080,6 +1090,7 @@ impl RegionReadProgress {
         (li.peers.clone(), leader_info)
     }
 
+    // INSTRUMENT_FUNC
     pub fn update_leader_info(&self, peer_id: u64, term: u64, region: &Region) {
         let mut core = self.core.lock().unwrap();
         core.leader_info.leader_id = peer_id;
@@ -1091,6 +1102,7 @@ impl RegionReadProgress {
     }
 
     /// Reset `safe_ts` to 0 and stop updating it
+    // INSTRUMENT_FUNC
     pub fn pause(&self) {
         let mut core = self.core.lock().unwrap();
         core.pause = true;
@@ -1098,6 +1110,7 @@ impl RegionReadProgress {
     }
 
     /// Discard incoming `read_state` item and stop updating `safe_ts`
+    // INSTRUMENT_FUNC
     pub fn discard(&self) {
         let mut core = self.core.lock().unwrap();
         core.pause = true;
@@ -1105,6 +1118,7 @@ impl RegionReadProgress {
     }
 
     /// Reset `safe_ts` and resume updating it
+    // INSTRUMENT_FUNC
     pub fn resume(&self) {
         let mut core = self.core.lock().unwrap();
         core.pause = false;
