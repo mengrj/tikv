@@ -3392,7 +3392,7 @@ where
             }
             Ok(RequestPolicy::ProposeConfChange) => {
                 // INSTRUMENT_BB
-                self.propose_conf_change(ctx, &req);
+                self.propose_conf_change(ctx, &req)
             }
             Err(e) => Err(e),
         };
