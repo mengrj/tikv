@@ -386,7 +386,6 @@ impl EntryCache {
             let new_capacity = self.cache.capacity();
             return Self::get_cache_vec_mem_size_change(new_capacity, old_capacity);
         }
-        // INSTRUMENT_BB
         0
     }
 

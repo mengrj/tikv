@@ -52,7 +52,6 @@ where
     S: StoreAddrResolver + Unpin + 'static,
     E: KvEngine,
 {
-    // INSTRUMENT_FUNC
     fn send(&mut self, msg: RaftMessage) -> RaftStoreResult<()> {
         match self.raft_client.send(msg) {
             Ok(()) => Ok(()),

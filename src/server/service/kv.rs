@@ -649,12 +649,14 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager, F: KvFor
         let future = async move {
             match sink.send_all(&mut stream).await.map_err(Error::from) {
                 Ok(_) => {
+                    // INSTRUMENT_BB
                     GRPC_MSG_HISTOGRAM_STATIC
                         .coprocessor_stream
                         .observe(duration_to_sec(begin_instant.saturating_elapsed()));
                     let _ = sink.close().await;
                 }
                 Err(e) => {
+                    // INSTRUMENT_BB
                     info!("kv rpc failed";
                         "request" => "coprocessor_stream",
                         "err" => ?e
@@ -1223,11 +1225,13 @@ fn handle_batch_commands_request<E: Engine, L: LockManager, F: KvFormat>(
             match req.cmd {
                 None => {
                     // For some invalid requests.
+                    // INSTRUMENT_BB
                     let begin_instant = Instant::now();
                     let resp = future::ok(batch_commands_response::Response::default());
                     response_batch_commands_request(id, resp, tx.clone(), begin_instant, GrpcTypeKind::invalid);
                 },
                 Some(batch_commands_request::request::Cmd::Get(req)) => {
+                    // INSTRUMENT_BB
                     if batcher.as_mut().map_or(false, |req_batch| {
                         req_batch.can_batch_get(&req)
                     }) {
@@ -1241,6 +1245,7 @@ fn handle_batch_commands_request<E: Engine, L: LockManager, F: KvFormat>(
                     }
                 },
                 Some(batch_commands_request::request::Cmd::RawGet(req)) => {
+                    // INSTRUMENT_BB
                     if batcher.as_mut().map_or(false, |req_batch| {
                         req_batch.can_batch_raw_get(&req)
                     }) {
@@ -1254,6 +1259,7 @@ fn handle_batch_commands_request<E: Engine, L: LockManager, F: KvFormat>(
                     }
                 },
                 Some(batch_commands_request::request::Cmd::Coprocessor(req)) => {
+                    // INSTRUMENT_BB
                     let begin_instant = Instant::now();
                     let resp = future_copr(copr, Some(peer.to_string()), req)
                         .map_ok(|resp| {

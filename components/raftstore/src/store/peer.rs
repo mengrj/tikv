@@ -2021,7 +2021,6 @@ where
         if let Some(ss) = ready.ss() {
             match ss.raft_state {
                 StateRole::Leader => {
-                    // INSTRUMENT_BB
                     // The local read can only be performed after a new leader has applied
                     // the first empty entry on its term. After that the lease expiring time
                     // should be updated to
@@ -2055,7 +2054,7 @@ where
                     self.require_updating_max_ts(&ctx.pd_scheduler);
                     // Init the in-memory pessimistic lock table when the peer becomes leader.
                     self.activate_in_memory_pessimistic_locks();
-
+                    // INSTRUMENT_BB
                     if !ctx.store_disk_usages.is_empty() {
                         self.refill_disk_full_peers(ctx);
                         debug!(
@@ -2204,6 +2203,7 @@ where
         // problem if the leader applies fewer values than the follower, the follower read
         // could get a newer value, and after that, the leader may read a stale value,
         // which violates linearizability.
+        // INSTRUMENT_BB
         self.get_store().applied_index() >= read_index
             // If it is in pending merge state(i.e. applied PrepareMerge), the data may be stale.
             // TODO: Add a test to cover this case

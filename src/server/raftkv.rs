@@ -432,7 +432,7 @@ where
         })
     }
 
-    // INSTRUMENT_FUNC
+
     fn async_snapshot(&self, mut ctx: SnapContext<'_>, cb: Callback<Self::Snap>) -> kv::Result<()> {
         fail_point!("raftkv_async_snapshot_err", |_| Err(box_err!(
             "injected error for async_snapshot"
@@ -452,6 +452,7 @@ where
             req,
             Box::new(move |res| match res {
                 Ok(CmdRes::Resp(mut r)) => {
+                    // INSTRUMENT_BB
                     let e = if r
                         .get(0)
                         .map(|resp| resp.get_read_index().has_locked())
@@ -465,6 +466,7 @@ where
                     cb(Err(e))
                 }
                 Ok(CmdRes::Snap(s)) => {
+                    // INSTRUMENT_BB
                     ASYNC_REQUESTS_DURATIONS_VEC
                         .snapshot
                         .observe(begin_instant.saturating_elapsed_secs());
@@ -472,6 +474,7 @@ where
                     cb(Ok(s))
                 }
                 Err(e) => {
+                    // INSTRUMENT_BB
                     let status_kind = get_status_kind_from_engine_error(&e);
                     ASYNC_REQUESTS_COUNTER_VEC.snapshot.get(status_kind).inc();
                     cb(Err(e))

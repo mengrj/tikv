@@ -95,24 +95,20 @@ impl MvccTxn {
         self.write_size
     }
 
-    // INSTRUMENT_FUNC
     pub(crate) fn put_lock(&mut self, key: Key, lock: &Lock) {
         let write = Modify::Put(CF_LOCK, key, lock.to_bytes());
         self.write_size += write.size();
         self.modifies.push(write);
     }
 
-    // INSTRUMENT_FUNC
     pub(crate) fn put_locks_for_1pc(&mut self, key: Key, lock: Lock, remove_pessimstic_lock: bool) {
         self.locks_for_1pc.push((key, lock, remove_pessimstic_lock));
     }
 
-    // INSTRUMENT_FUNC
     pub(crate) fn put_pessimistic_lock(&mut self, key: Key, lock: PessimisticLock) {
         self.modifies.push(Modify::PessimisticLock(key, lock))
     }
 
-    // INSTRUMENT_FUNC
     pub(crate) fn unlock_key(&mut self, key: Key, pessimistic: bool) -> Option<ReleasedLock> {
         let released = ReleasedLock::new(&key, pessimistic);
         let write = Modify::Delete(CF_LOCK, key);
@@ -121,14 +117,12 @@ impl MvccTxn {
         Some(released)
     }
 
-    // INSTRUMENT_FUNC
     pub(crate) fn put_value(&mut self, key: Key, ts: TimeStamp, value: Value) {
         let write = Modify::Put(CF_DEFAULT, key.append_ts(ts), value);
         self.write_size += write.size();
         self.modifies.push(write);
     }
 
-    // INSTRUMENT_FUNC
     pub(crate) fn delete_value(&mut self, key: Key, ts: TimeStamp) {
         let write = Modify::Delete(CF_DEFAULT, key.append_ts(ts));
         self.write_size += write.size();

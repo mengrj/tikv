@@ -121,20 +121,27 @@ impl GcManagerContext {
     /// `GcManagerError::Stopped`.
     fn sleep_or_stop(&mut self, timeout: Duration) -> GcManagerResult<()> {
         if self.is_stopped {
+            // INSTRUMENT_BB
             return Err(GcManagerError::Stopped);
         }
         match self.stop_signal_receiver.as_ref() {
             Some(rx) => match rx.recv_timeout(timeout) {
                 Ok(_) => {
+                    // INSTRUMENT_BB
                     self.is_stopped = true;
                     Err(GcManagerError::Stopped)
                 }
-                Err(mpsc::RecvTimeoutError::Timeout) => Ok(()),
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    // INSTRUMENT_BB
+                    Ok(())
+                }
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    // INSTRUMENT_BB
                     panic!("stop_signal_receiver unexpectedly disconnected")
                 }
             },
             None => {
+                // INSTRUMENT_BB
                 thread::sleep(timeout);
                 Ok(())
             }
@@ -150,11 +157,16 @@ impl GcManagerContext {
         match self.stop_signal_receiver.as_ref() {
             Some(rx) => match rx.try_recv() {
                 Ok(_) => {
+                    // INSTRUMENT_BB
                     self.is_stopped = true;
                     Err(GcManagerError::Stopped)
                 }
-                Err(mpsc::TryRecvError::Empty) => Ok(()),
+                Err(mpsc::TryRecvError::Empty) => {
+                    // INSTRUMENT_BB
+                    Ok(())
+                }
                 Err(mpsc::TryRecvError::Disconnected) => {
+                    // INSTRUMENT_BB
                     error!("stop_signal_receiver unexpectedly disconnected, gc_manager will stop");
                     Err(GcManagerError::Stopped)
                 }
@@ -550,6 +562,7 @@ impl<S: GcSafePointProvider, R: RegionInfoProvider + 'static, E: KvEngine> GcMan
         ) {
             // Ignore the error and continue, since it's useless to retry this.
             // TODO: Find a better way to handle errors. Maybe we should retry.
+            // INSTRUMENT_BB
             warn!("failed gc"; "start_key" => &hex_start, "end_key" => &hex_end, "err" => ?e);
         }
 
@@ -557,7 +570,7 @@ impl<S: GcSafePointProvider, R: RegionInfoProvider + 'static, E: KvEngine> GcMan
         AUTO_GC_PROCESSED_REGIONS_GAUGE_VEC
             .with_label_values(&[PROCESS_TYPE_GC])
             .inc();
-
+        // INSTRUMENT_BB
         Ok(next_key)
     }
 

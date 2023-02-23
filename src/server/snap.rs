@@ -120,7 +120,6 @@ pub struct SendStat {
 /// Send the snapshot to specified address.
 ///
 /// It will first send the normal raft snapshot message and then send the snapshot file.
-// INSTRUMENT_FUNC
 pub fn send_snap(
     env: Arc<Environment>,
     mgr: SnapManager,
@@ -182,6 +181,7 @@ pub fn send_snap(
         drop(client);
         match recv_result {
             Ok(_) => {
+                // INSTRUMENT_BB
                 fail_point!("snapshot_delete_after_send");
                 mgr.delete_snapshot(&key, &*chunks.snap, true);
                 // TODO: improve it after rustc resolves the bug.
@@ -193,7 +193,10 @@ pub fn send_snap(
                     elapsed: timer.saturating_elapsed(),
                 })
             }
-            Err(e) => Err(e),
+            Err(e) => {
+                // INSTRUMENT_BB
+                Err(e)
+            }
         }
     };
     Ok(send_task)
@@ -271,7 +274,6 @@ impl RecvSnapContext {
     }
 }
 
-// INSTRUMENT_FUNC
 fn recv_snap<R: RaftStoreRouter<impl KvEngine> + 'static>(
     stream: RequestStream<SnapshotChunk>,
     sink: ClientStreamingSink<Done>,
@@ -311,8 +313,12 @@ fn recv_snap<R: RaftStoreRouter<impl KvEngine> + 'static>(
 
     async move {
         match recv_task.await {
-            Ok(()) => sink.success(Done::default()).await.map_err(Error::from),
+            Ok(()) => {
+                // INSTRUMENT_BB
+                sink.success(Done::default()).await.map_err(Error::from)
+            }
             Err(e) => {
+                // INSTRUMENT_BB
                 let status = RpcStatus::with_message(RpcStatusCode::UNKNOWN, format!("{:?}", e));
                 sink.fail(status).await.map_err(Error::from)
             }

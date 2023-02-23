@@ -343,6 +343,7 @@ impl<S: Snapshot, P: ScanPolicy<S>> ForwardScanner<S, P> {
                 if self.cfg.isolation_level == IsolationLevel::RcCheckTs {
                     // TODO: the more write recent version with `LOCK` or `ROLLBACK` write type
                     //       could be skipped.
+                    // INSTRUMENT_BB
                     return Err(WriteConflict {
                         start_ts: self.cfg.ts,
                         conflict_start_ts: Default::default(),
@@ -1320,6 +1321,7 @@ mod latest_kv_tests {
         // We still pointing at current user key, so a seek:
         //   a_8 b_4 b_3 b_2 b_1
         //                       ^cursor
+        // INSTRUMENT_BB
         assert_eq!(
             scanner.next().unwrap(),
             Some((Key::from_raw(b"b"), b"b_value".to_vec())),
@@ -1818,6 +1820,7 @@ mod latest_entry_tests {
             .commit_ts(8.into())
             .build_commit(WriteType::Put, true);
         let size = entry.size();
+        // INSTRUMENT_BB
         assert_eq!(scanner.next_entry().unwrap(), Some(entry),);
         let statistics = scanner.take_statistics();
         assert_eq!(statistics.write.seek, 1);
@@ -2250,6 +2253,7 @@ mod delta_entry_tests {
             .commit_ts(9.into())
             .build_commit(WriteType::Put, true);
         let size = entry.size();
+        // INSTRUMENT_BB
         assert_eq!(scanner.next_entry().unwrap(), Some(entry),);
         let statistics = scanner.take_statistics();
         assert_eq!(statistics.write.seek, 0);
