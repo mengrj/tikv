@@ -215,7 +215,7 @@ pub fn make_rollback(
         }
         None => {
             // INSTRUMENT_BB
-            Some(Write::new_rollback(start_ts, protected)),
+            Some(Write::new_rollback(start_ts, protected))
         }
     }
 }
