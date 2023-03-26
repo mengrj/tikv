@@ -473,7 +473,6 @@ where
                     cb(Ok(s))
                 }
                 Err(e) => {
-                    // INSTRUMENT_BB
                     let status_kind = get_status_kind_from_engine_error(&e);
                     ASYNC_REQUESTS_COUNTER_VEC.snapshot.get(status_kind).inc();
                     cb(Err(e))

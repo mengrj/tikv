@@ -1047,7 +1047,7 @@ impl RegionReadProgress {
 
     // Consume the provided `LeaderInfo` to update `safe_ts` and return whether the provided
     // `LeaderInfo` is same as ours
-    // INSTRUMENT_FUNC
+
     pub fn consume_leader_info(&self, mut leader_info: LeaderInfo) -> bool {
         let mut core = self.core.lock().unwrap();
         if leader_info.has_read_state() {
