@@ -318,7 +318,7 @@ where
     ) -> RegionIterator<S> {
         update_lower_bound(&mut iter_opt, &region);
         update_upper_bound(&mut iter_opt, &region);
-        // INSTRUMENT_BB
+
         let iter = snap
             .iterator_cf_opt(cf, iter_opt)
             .expect("creating snapshot iterator"); // FIXME error handling

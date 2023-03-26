@@ -535,7 +535,7 @@ impl Lease {
         self.bound = None;
     }
 
-    // INSTRUMENT_FUNC
+
     pub fn expire_remote_lease(&mut self) {
         // Expire remote lease if there is any.
         if let Some(r) = self.remote.take() {

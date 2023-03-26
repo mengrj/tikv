@@ -466,7 +466,6 @@ where
                     cb(Err(e))
                 }
                 Ok(CmdRes::Snap(s)) => {
-                    // INSTRUMENT_BB
                     ASYNC_REQUESTS_DURATIONS_VEC
                         .snapshot
                         .observe(begin_instant.saturating_elapsed_secs());

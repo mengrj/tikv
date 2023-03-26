@@ -129,7 +129,7 @@ impl MvccTxn {
         self.modifies.push(write);
     }
 
-    // INSTRUMENT_FUNC
+
     pub(crate) fn put_write(&mut self, key: Key, ts: TimeStamp, value: Value) {
         let write = Modify::Put(CF_WRITE, key.append_ts(ts), value);
         self.write_size += write.size();
