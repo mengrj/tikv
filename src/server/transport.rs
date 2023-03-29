@@ -59,14 +59,17 @@ where
         }
     }
 
+    // INSTRUMENT_FUNC
     fn set_store_allowlist(&mut self, stores: Vec<u64>) {
         self.raft_client.set_store_allowlist(stores)
     }
 
+    // INSTRUMENT_FUNC
     fn need_flush(&self) -> bool {
         self.raft_client.need_flush()
     }
 
+    // INSTRUMENT_FUNC
     fn flush(&mut self) {
         self.raft_client.flush();
     }

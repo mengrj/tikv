@@ -168,12 +168,14 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager, F: KvFor
     ) -> RaftStoreResult<()> {
         let to_store_id = msg.get_to_peer().get_store_id();
         if to_store_id != store_id {
+            // INSTRUMENT_BB
             return Err(RaftStoreError::StoreNotMatch {
                 to_store_id,
                 my_store_id: store_id,
             });
         }
         if reject && msg.get_message().get_msg_type() == MessageType::MsgAppend {
+            // INSTRUMENT_BB
             RAFT_APPEND_REJECTS.inc();
             let id = msg.get_region_id();
             let peer_id = msg.get_message().get_from();
@@ -757,12 +759,14 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager, F: KvFor
         let future = async move {
             match sink.send_all(&mut stream).await.map_err(Error::from) {
                 Ok(_) => {
+                    // INSTRUMENT_BB
                     GRPC_MSG_HISTOGRAM_STATIC
                         .coprocessor_stream
                         .observe(duration_to_sec(begin_instant.saturating_elapsed()));
                     let _ = sink.close().await;
                 }
                 Err(e) => {
+                    // INSTRUMENT_BB
                     info!("kv rpc failed";
                         "request" => "coprocessor_stream",
                         "err" => ?e
@@ -775,6 +779,7 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager, F: KvFor
         ctx.spawn(future);
     }
 
+    // INSTRUMENT_FUNC
     fn raft(
         &mut self,
         ctx: RpcContext<'_>,
@@ -817,6 +822,7 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager, F: KvFor
         });
     }
 
+    // INSTRUMENT_FUNC
     fn batch_raft(
         &mut self,
         ctx: RpcContext<'_>,
@@ -865,6 +871,7 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager, F: KvFor
         });
     }
 
+    // INSTRUMENT_FUNC
     fn snapshot(
         &mut self,
         ctx: RpcContext<'_>,
@@ -1342,11 +1349,13 @@ fn handle_batch_commands_request<
             match req.cmd {
                 None => {
                     // For some invalid requests.
+                    // INSTRUMENT_BB
                     let begin_instant = Instant::now();
                     let resp = future::ok(batch_commands_response::Response::default());
                     response_batch_commands_request(id, resp, tx.clone(), begin_instant, GrpcTypeKind::invalid, String::default());
                 },
                 Some(batch_commands_request::request::Cmd::Get(mut req)) => {
+                    // INSTRUMENT_BB
                     if batcher.as_mut().map_or(false, |req_batch| {
                         req_batch.can_batch_get(&req)
                     }) {
@@ -1361,6 +1370,7 @@ fn handle_batch_commands_request<
                     }
                 },
                 Some(batch_commands_request::request::Cmd::RawGet(mut req)) => {
+                    // INSTRUMENT_BB
                     if batcher.as_mut().map_or(false, |req_batch| {
                         req_batch.can_batch_raw_get(&req)
                     }) {
@@ -1375,6 +1385,7 @@ fn handle_batch_commands_request<
                     }
                 },
                 Some(batch_commands_request::request::Cmd::Coprocessor(mut req)) => {
+                    // INSTRUMENT_BB
                     let begin_instant = Instant::now();
                     let source = req.mut_context().take_request_source();
                     let resp = future_copr(copr, Some(peer.to_string()), req)

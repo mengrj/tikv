@@ -100,22 +100,27 @@ impl State {
         match self {
             State::Rewind(safe_point) => {
                 if commit_ts <= *safe_point {
+                    // INSTRUMENT_BB
                     *self = State::RemoveIdempotent;
                     self.step(gc, write, commit_ts);
                 }
             }
             State::RemoveIdempotent => match write.write_type {
                 WriteType::Put => {
+                    // INSTRUMENT_BB
                     *self = State::RemoveAll(None);
                 }
                 WriteType::Delete => {
+                    // INSTRUMENT_BB
                     *self = State::RemoveAll(Some((commit_ts, write)));
                 }
                 WriteType::Rollback | WriteType::Lock => {
+                    // INSTRUMENT_BB
                     gc.delete_write(write, commit_ts);
                 }
             },
             State::RemoveAll(_) => {
+                // INSTRUMENT_BB
                 gc.delete_write(write, commit_ts);
             }
         }

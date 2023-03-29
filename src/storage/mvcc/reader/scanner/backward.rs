@@ -288,8 +288,13 @@ impl<S: Snapshot> BackwardKvScanner<S> {
                 .map_err(Error::from)?;
 
             match write.write_type {
-                WriteType::Put | WriteType::Delete => last_version = Some(write.to_owned()),
-                WriteType::Lock | WriteType::Rollback => {}
+                WriteType::Put | WriteType::Delete => {
+                    // INSTRUMENT_BB
+                    last_version = Some(write.to_owned())
+                }
+                WriteType::Lock | WriteType::Rollback => {
+                    // INSTRUMENT_BB
+                }
             }
         }
 

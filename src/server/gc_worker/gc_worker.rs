@@ -1002,6 +1002,7 @@ where
                 safe_point,
                 region_info_provider,
             } => {
+                // INSTRUMENT_BB
                 let old_seek_tombstone = self.mut_stats(GcKeyMode::txn).write.seek_tombstone;
 
                 match self.gc_keys(keys, safe_point, Either::Right(region_info_provider)) {
@@ -1029,6 +1030,7 @@ where
                 safe_point,
                 region_info_provider,
             } => {
+                // INSTRUMENT_BB
                 match self.raw_gc_keys(keys, safe_point, region_info_provider) {
                     Ok((handled, wasted)) => {
                         GC_COMPACTION_FILTER_MVCC_DELETION_HANDLED
@@ -1053,6 +1055,7 @@ where
                 callback,
                 region_info_provider,
             } => {
+                // INSTRUMENT_BB
                 let res =
                     self.unsafe_destroy_range(&ctx, &start_key, &end_key, region_info_provider);
                 update_metrics(res.is_err());
@@ -1072,6 +1075,7 @@ where
                 callback,
                 region_info_provider,
             } => {
+                // INSTRUMENT_BB
                 let res = self.handle_physical_scan_lock(
                     &ctx,
                     max_ts,
@@ -1090,6 +1094,7 @@ where
                 );
             }
             GcTask::OrphanVersions { mut wb, id } => {
+                // INSTRUMENT_BB
                 info!("handling GcTask::OrphanVersions"; "id" => id);
                 let mut wopts = WriteOptions::default();
                 wopts.set_sync(true);

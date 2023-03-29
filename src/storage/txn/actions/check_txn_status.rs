@@ -99,13 +99,19 @@ pub fn check_txn_status_missing_lock(
     match reader.get_txn_commit_record(&primary_key)? {
         TxnCommitRecord::SingleRecord { commit_ts, write } => {
             if write.write_type == WriteType::Rollback {
+                // INSTRUMENT_BB
                 Ok(TxnStatus::RolledBack)
             } else {
+                // INSTRUMENT_BB
                 Ok(TxnStatus::committed(commit_ts))
             }
         }
-        TxnCommitRecord::OverlappedRollback { .. } => Ok(TxnStatus::RolledBack),
+        TxnCommitRecord::OverlappedRollback { .. } => {
+            // INSTRUMENT_BB
+            Ok(TxnStatus::RolledBack)
+        }
         TxnCommitRecord::None { overlapped_write } => {
+            // INSTRUMENT_BB
             if MissingLockAction::ReturnError == action {
                 return Err(ErrorInner::TxnNotFound {
                     start_ts: reader.start_ts,
@@ -203,13 +209,18 @@ pub fn make_rollback(
         Some(OverlappedWrite { write, gc_fence }) => {
             assert!(start_ts > write.start_ts);
             if protected {
+                // INSTRUMENT_BB
                 Some(write.set_overlapped_rollback(true, Some(gc_fence)))
             } else {
                 // No need to update the original write.
+                // INSTRUMENT_BB
                 None
             }
         }
-        None => Some(Write::new_rollback(start_ts, protected)),
+        None => {
+            // INSTRUMENT_BB
+            Some(Write::new_rollback(start_ts, protected))
+        }
     }
 }
 
@@ -223,16 +234,20 @@ pub enum MissingLockAction {
 impl MissingLockAction {
     pub fn rollback_protect(protect_rollback: bool) -> MissingLockAction {
         if protect_rollback {
+            // INSTRUMENT_BB
             MissingLockAction::ProtectedRollback
         } else {
+            // INSTRUMENT_BB
             MissingLockAction::Rollback
         }
     }
 
     pub fn rollback(rollback_if_not_exist: bool) -> MissingLockAction {
         if rollback_if_not_exist {
+            // INSTRUMENT_BB
             MissingLockAction::ProtectedRollback
         } else {
+            // INSTRUMENT_BB
             MissingLockAction::ReturnError
         }
     }
