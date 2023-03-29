@@ -51,6 +51,7 @@ where
     ER: RaftEngine,
 {
     #[inline]
+    // INSTRUMENT_FUNC
     fn send(&self, region_id: u64, msg: CasualMessage<EK>) -> Result<()> {
         match self.router.send(region_id, PeerMsg::CasualMessage(msg)) {
             Ok(()) => Ok(()),

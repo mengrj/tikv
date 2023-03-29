@@ -278,6 +278,7 @@ where
         Ok(match decode_json(&body) {
             Ok(change) => match cfg_controller.update(change) {
                 Err(e) => make_response(
+                    // INSTRUMENT_BB
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("failed to update, error: {:?}", e),
                 ),
@@ -288,6 +289,7 @@ where
                 }
             },
             Err(e) => make_response(
+                // INSTRUMENT_BB
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("failed to decode, error: {:?}", e),
             ),

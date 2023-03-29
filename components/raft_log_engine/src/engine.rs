@@ -121,18 +121,22 @@ impl RaftEngineReadOnly for RaftLogEngine {
 impl RaftEngine for RaftLogEngine {
     type LogBatch = RaftLogBatch;
 
+    // INSTRUMENT_FUNC
     fn log_batch(&self, _capacity: usize) -> Self::LogBatch {
         RaftLogBatch::default()
     }
 
+    // INSTRUMENT_FUNC
     fn sync(&self) -> Result<()> {
         self.0.sync().map_err(transfer_error)
     }
 
+    // INSTRUMENT_FUNC
     fn consume(&self, batch: &mut Self::LogBatch, sync: bool) -> Result<usize> {
         self.0.write(&mut batch.0, sync).map_err(transfer_error)
     }
 
+    // INSTRUMENT_FUNC
     fn consume_and_shrink(
         &self,
         batch: &mut Self::LogBatch,
@@ -143,6 +147,7 @@ impl RaftEngine for RaftLogEngine {
         self.0.write(&mut batch.0, sync).map_err(transfer_error)
     }
 
+    // INSTRUMENT_FUNC
     fn clean(
         &self,
         raft_group_id: u64,
@@ -153,22 +158,26 @@ impl RaftEngine for RaftLogEngine {
         Ok(())
     }
 
+    // INSTRUMENT_FUNC
     fn append(&self, raft_group_id: u64, entries: Vec<Entry>) -> Result<usize> {
         let mut batch = Self::LogBatch::default();
         batch.0.add_entries(raft_group_id, entries);
         self.0.write(&mut batch.0, false).map_err(transfer_error)
     }
 
+    // INSTRUMENT_FUNC
     fn put_raft_state(&self, raft_group_id: u64, state: &RaftLocalState) -> Result<()> {
         self.0
             .put_message(raft_group_id, RAFT_LOG_STATE_KEY, state)
             .map_err(transfer_error)
     }
 
+    // INSTRUMENT_FUNC
     fn gc(&self, raft_group_id: u64, _from: u64, to: u64) -> Result<usize> {
         Ok(self.0.compact_to(raft_group_id, to) as usize)
     }
 
+    // INSTRUMENT_FUNC
     fn purge_expired_files(&self) -> Result<Vec<u64>> {
         self.0.purge_expired_files().map_err(transfer_error)
     }

@@ -183,6 +183,7 @@ where
         }
     }
 
+    // INSTRUMENT_FUNC
     pub fn set_txn_extra_scheduler(&mut self, txn_extra_scheduler: Arc<dyn TxnExtraScheduler>) {
         self.txn_extra_scheduler = Some(txn_extra_scheduler);
     }
@@ -200,6 +201,7 @@ where
         header
     }
 
+    // INSTRUMENT_FUNC
     fn exec_snapshot(
         &self,
         ctx: SnapContext<'_>,
@@ -230,6 +232,7 @@ where
             .map_err(From::from)
     }
 
+    // INSTRUMENT_FUNC
     fn exec_write_requests(
         &self,
         ctx: &Context,
@@ -330,6 +333,7 @@ where
         self.engine.clone()
     }
 
+    // INSTRUMENT_FUNC
     fn snapshot_on_kv_engine(&self, start_key: &[u8], end_key: &[u8]) -> kv::Result<Self::Snap> {
         let mut region = metapb::Region::default();
         region.set_start_key(start_key.to_owned());
@@ -342,18 +346,22 @@ where
         ))
     }
 
+    // INSTRUMENT_FUNC
     fn modify_on_kv_engine(&self, mut modifies: Vec<Modify>) -> kv::Result<()> {
         for modify in &mut modifies {
             match modify {
                 Modify::Delete(_, ref mut key) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key.as_encoded());
                     *key = Key::from_encoded(bytes);
                 }
                 Modify::Put(_, ref mut key, _) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key.as_encoded());
                     *key = Key::from_encoded(bytes);
                 }
                 Modify::DeleteRange(_, ref mut key1, ref mut key2, _) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key1.as_encoded());
                     *key1 = Key::from_encoded(bytes);
                     let bytes = keys::data_end_key(key2.as_encoded());
@@ -440,6 +448,7 @@ where
             req,
             Box::new(move |(cb_ctx, res)| match res {
                 Ok(CmdRes::Resp(mut r)) => {
+                    // INSTRUMENT_BB
                     let e = if r
                         .get(0)
                         .map(|resp| resp.get_read_index().has_locked())
@@ -473,6 +482,7 @@ where
         })
     }
 
+    // INSTRUMENT_FUNC
     fn release_snapshot(&self) {
         self.router.release_snapshot_cache();
     }

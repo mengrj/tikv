@@ -61,10 +61,12 @@ where
         }
     }
 
+    // INSTRUMENT_FUNC
     fn need_flush(&self) -> bool {
         self.raft_client.need_flush()
     }
 
+    // INSTRUMENT_FUNC
     fn flush(&mut self) {
         self.raft_client.flush();
     }

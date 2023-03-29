@@ -390,12 +390,14 @@ impl<K: PrewriteKind> Prewriter<K> {
     // TODO: Fallback to non-async commit if not synced instead of returning an error.
     fn check_max_ts_synced(&self, snapshot: &impl Snapshot) -> Result<()> {
         if (self.secondary_keys.is_some() || self.try_one_pc) && !snapshot.is_max_ts_synced() {
+            // INSTRUMENT_BB
             Err(ErrorInner::MaxTimestampNotSynced {
                 region_id: self.ctx.get_region_id(),
                 start_ts: self.start_ts,
             }
             .into())
         } else {
+            INSTRUMENT_BB
             Ok(())
         }
     }

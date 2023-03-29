@@ -735,6 +735,7 @@ where
     }
 
     /// Updates replication mode.
+    // INSTRUMENT_FUNC
     pub fn switch_replication_mode(&mut self, state: &Mutex<GlobalReplicationState>) {
         self.replication_sync = false;
         let mut guard = state.lock().unwrap();
