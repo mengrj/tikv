@@ -37,6 +37,7 @@ pub fn find_peer_mut(region: &mut metapb::Region, store_id: u64) -> Option<&mut 
         .find(|p| p.get_store_id() == store_id)
 }
 
+// INSTRUMENT_FUNC
 pub fn remove_peer(region: &mut metapb::Region, store_id: u64) -> Option<metapb::Peer> {
     region
         .get_peers()
@@ -46,6 +47,7 @@ pub fn remove_peer(region: &mut metapb::Region, store_id: u64) -> Option<metapb:
 }
 
 // a helper function to create peer easily.
+// INSTRUMENT_FUNC
 pub fn new_peer(store_id: u64, peer_id: u64) -> metapb::Peer {
     let mut peer = metapb::Peer::default();
     peer.set_store_id(store_id);

@@ -544,6 +544,7 @@ where
                 callback,
                 ..
             } => {
+                // INSTRUMENT_BB
                 let res = self.gc(&start_key, &end_key, safe_point);
                 update_metrics(res.is_err());
                 callback(res);
@@ -562,6 +563,7 @@ where
                 store_id,
                 region_info_provider,
             } => {
+                // INSTRUMENT_BB
                 let old_seek_tombstone = self.stats.write.seek_tombstone;
                 let res = self.gc_keys(keys, safe_point, Some((store_id, region_info_provider)));
                 let new_seek_tombstone = self.stats.write.seek_tombstone;
@@ -580,6 +582,7 @@ where
                 end_key,
                 callback,
             } => {
+                // INSTRUMENT_BB
                 let res = self.unsafe_destroy_range(&ctx, &start_key, &end_key);
                 update_metrics(res.is_err());
                 callback(res);
@@ -597,6 +600,7 @@ where
                 limit,
                 callback,
             } => {
+                // INSTRUMENT_BB
                 let res = self.handle_physical_scan_lock(&ctx, max_ts, &start_key, limit);
                 update_metrics(res.is_err());
                 callback(res);
@@ -609,6 +613,7 @@ where
                 );
             }
             GcTask::OrphanVersions { wb, id } => {
+                // INSTRUMENT_BB
                 info!("handling GcTask::OrphanVersions"; "id" => id);
                 let mut wopts = WriteOptions::default();
                 wopts.set_sync(true);

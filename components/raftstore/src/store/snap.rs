@@ -142,10 +142,12 @@ impl SnapKey {
     pub fn from_snap(snap: &RaftSnapshot) -> io::Result<SnapKey> {
         let mut snap_data = RaftSnapshotData::default();
         if let Err(e) = snap_data.merge_from_bytes(snap.get_data()) {
+            // INSTRUMENT_BB
             return Err(io::Error::new(ErrorKind::Other, e));
         }
 
         Ok(SnapKey::from_region_snap(
+            // INSTRUMENT_BB
             snap_data.get_region().get_id(),
             snap,
         ))
@@ -226,6 +228,7 @@ pub fn copy_snapshot(
 }
 
 // Try to delete the specified snapshot, return true if the deletion is done.
+// INSTRUMENT_FUNC
 fn retry_delete_snapshot(mgr: &SnapManagerCore, key: &SnapKey, snap: &dyn GenericSnapshot) -> bool {
     let d = time::Duration::from_millis(DELETE_RETRY_TIME_MILLIS);
     for _ in 0..DELETE_RETRY_MAX_TIMES {
@@ -872,6 +875,7 @@ impl GenericSnapshot for Snap {
 
     // TODO: It's very hard to handle key manager correctly without lock `SnapManager`.
     // Let's do it later.
+    // INSTRUMENT_FUNC
     fn delete(&self) {
         debug!(
             "deleting snapshot file";
@@ -1459,6 +1463,7 @@ impl SnapManager {
         }
     }
 
+    // INSTRUMENT_FUNC
     pub fn delete_snapshot(
         &self,
         key: &SnapKey,
@@ -1494,6 +1499,7 @@ impl SnapManagerCore {
     }
 
     // Return true if it successfully delete the specified snapshot.
+    // INSTRUMENT_FUNC
     fn delete_snapshot(
         &self,
         key: &SnapKey,

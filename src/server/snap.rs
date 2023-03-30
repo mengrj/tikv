@@ -169,6 +169,7 @@ pub fn send_snap(
         drop(client);
         match recv_result {
             Ok(_) => {
+                // INSTRUMENT_BB
                 fail_point!("snapshot_delete_after_send");
                 chunks.snap.delete();
                 // TODO: improve it after rustc resolves the bug.
@@ -180,7 +181,10 @@ pub fn send_snap(
                     elapsed: timer.elapsed(),
                 })
             }
-            Err(e) => Err(e),
+            Err(e) => {
+                // INSTRUMENT_BB
+                Err(e)
+            }
         }
     };
     Ok(send_task)
@@ -293,8 +297,12 @@ fn recv_snap<R: RaftStoreRouter<impl KvEngine> + 'static>(
 
     async move {
         match recv_task.await {
-            Ok(()) => sink.success(Done::default()).await.map_err(Error::from),
+            Ok(()) => {
+                // INSTRUMENT_BB
+                sink.success(Done::default()).await.map_err(Error::from)
+            }
             Err(e) => {
+                // INSTRUMENT_BB
                 let status = RpcStatus::with_message(RpcStatusCode::UNKNOWN, format!("{:?}", e));
                 sink.fail(status).await.map_err(Error::from)
             }
@@ -386,6 +394,7 @@ where
     fn run(&mut self, task: Task) {
         match task {
             Task::Recv { stream, sink } => {
+                // INSTRUMENT_BB
                 let task_num = self.recving_count.load(Ordering::SeqCst);
                 if task_num >= self.cfg.concurrent_recv_snap_limit {
                     warn!("too many recving snapshot tasks, ignore");
@@ -415,6 +424,7 @@ where
                 self.pool.spawn(task);
             }
             Task::Send { addr, msg, cb } => {
+                // INSTRUMENT_BB
                 fail_point!("send_snapshot");
                 if self.sending_count.load(Ordering::SeqCst) >= self.cfg.concurrent_send_snap_limit
                 {
@@ -461,9 +471,11 @@ where
                 self.pool.spawn(task);
             }
             Task::RefreshConfigEvent => {
+                // INSTRUMENT_BB
                 self.refresh_cfg();
             }
             Task::Validate(f) => {
+                // INSTRUMENT_BB
                 f(&self.cfg);
             }
         }

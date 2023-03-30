@@ -306,12 +306,14 @@ where
                     format!("failed to update, error: {:?}", e),
                 ),
                 Ok(_) => {
+                    // INSTRUMENT_BB
                     let mut resp = Response::default();
                     *resp.status_mut() = StatusCode::OK;
                     resp
                 }
             },
             Err(e) => StatusServer::err_response(
+                // INSTRUMENT_BB
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("failed to decode, error: {:?}", e),
             ),
@@ -625,6 +627,7 @@ where
         let id: u64 = match cap["id"].parse() {
             Ok(id) => id,
             Err(err) => {
+                // INSTRUMENT_BB
                 return err_resp(
                     StatusCode::BAD_REQUEST,
                     format!("invalid region id: {}", err),
@@ -642,9 +645,11 @@ where
         ) {
             Ok(_) => (),
             Err(raftstore::Error::RegionNotFound(_)) => {
+                // INSTRUMENT_BB
                 return not_found(format!("region({}) not found", id));
             }
             Err(err) => {
+                // INSTRUMENT_BB
                 return err_resp(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("channel pending or disconnect: {}", err),
@@ -655,6 +660,7 @@ where
         let meta = match rx.await {
             Ok(meta) => meta,
             Err(_) => {
+                // INSTRUMENT_BB
                 return Ok(StatusServer::err_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "query cancelled",
@@ -665,6 +671,7 @@ where
         let body = match serde_json::to_vec(&meta) {
             Ok(body) => body,
             Err(err) => {
+                // INSTRUMENT_BB
                 return Ok(StatusServer::err_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("fails to json: {}", err),
@@ -677,6 +684,7 @@ where
         {
             Ok(resp) => Ok(resp),
             Err(err) => Ok(StatusServer::err_response(
+                // INSTRUMENT_BB
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("fails to build response: {}", err),
             )),

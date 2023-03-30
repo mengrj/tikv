@@ -594,12 +594,14 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         let future = async move {
             match sink.send_all(&mut stream).await.map_err(Error::from) {
                 Ok(_) => {
+                    // INSTRUMENT_BB
                     GRPC_MSG_HISTOGRAM_STATIC
                         .coprocessor_stream
                         .observe(duration_to_sec(begin_instant.elapsed()));
                     let _ = sink.close().await;
                 }
                 Err(e) => {
+                    // INSTRUMENT_BB
                     debug!("kv rpc failed";
                         "request" => "coprocessor_stream",
                         "err" => ?e
@@ -612,6 +614,7 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         ctx.spawn(future);
     }
 
+    // INSTRUMENT_FUNC
     fn raft(
         &mut self,
         ctx: RpcContext<'_>,
@@ -649,6 +652,7 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         });
     }
 
+    // INSTRUMENT_FUNC
     fn batch_raft(
         &mut self,
         ctx: RpcContext<'_>,
@@ -666,6 +670,7 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
                 for msg in msgs.take_msgs().into_iter() {
                     let to_store_id = msg.get_to_peer().get_store_id();
                     if to_store_id != store_id {
+                        // INSTRUMENT_BB
                         return future::err(Error::from(RaftStoreError::StoreNotMatch {
                             to_store_id,
                             my_store_id: store_id,
@@ -1132,11 +1137,13 @@ fn handle_batch_commands_request<E: Engine, L: LockManager>(
             match req.cmd {
                 None => {
                     // For some invalid requests.
+                    // INSTRUMENT_BB
                     let begin_instant = Instant::now();
                     let resp = future::ok(batch_commands_response::Response::default());
                     response_batch_commands_request(id, resp, tx.clone(), begin_instant, GrpcTypeKind::invalid);
                 },
                 Some(batch_commands_request::request::Cmd::Get(req)) => {
+                    // INSTRUMENT_BB
                     if batcher.as_mut().map_or(false, |req_batch| {
                         req_batch.can_batch_get(&req)
                     }) {
@@ -1150,6 +1157,7 @@ fn handle_batch_commands_request<E: Engine, L: LockManager>(
                     }
                 },
                 Some(batch_commands_request::request::Cmd::RawGet(req)) => {
+                    // INSTRUMENT_BB
                     if batcher.as_mut().map_or(false, |req_batch| {
                         req_batch.can_batch_raw_get(&req)
                     }) {
@@ -1163,13 +1171,17 @@ fn handle_batch_commands_request<E: Engine, L: LockManager>(
                     }
                 },
                 $(Some(batch_commands_request::request::Cmd::$cmd(req)) => {
+                    // INSTRUMENT_BB
                     let begin_instant = Instant::now();
                     let resp = $future_fn($($arg,)* req)
                         .map_ok(oneof!(batch_commands_response::response::Cmd::$cmd))
                         .map_err(|_| GRPC_MSG_FAIL_COUNTER.$metric_name.inc());
                     response_batch_commands_request(id, resp, tx.clone(), begin_instant, GrpcTypeKind::$metric_name);
                 })*
-                Some(batch_commands_request::request::Cmd::Import(_)) => unimplemented!(),
+                Some(batch_commands_request::request::Cmd::Import(_)) => {
+                    // INSTRUMENT_BB
+                    unimplemented!()
+                }
             }
         }
     }

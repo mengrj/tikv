@@ -117,11 +117,13 @@ impl RaftEngine for RaftLogEngine {
         Ok(())
     }
 
+    // INSTRUMENT_FUNC
     fn consume(&self, batch: &mut Self::LogBatch, sync: bool) -> Result<usize> {
         let ret = box_try!(self.0.write(&mut batch.0, sync));
         Ok(ret)
     }
 
+    // INSTRUMENT_FUNC
     fn consume_and_shrink(
         &self,
         batch: &mut Self::LogBatch,
@@ -133,6 +135,7 @@ impl RaftEngine for RaftLogEngine {
         Ok(ret)
     }
 
+    // INSTRUMENT_FUNC
     fn clean(
         &self,
         raft_group_id: u64,
@@ -150,6 +153,7 @@ impl RaftEngine for RaftLogEngine {
         Ok(ret)
     }
 
+    // INSTRUMENT_FUNC
     fn put_raft_state(&self, raft_group_id: u64, state: &RaftLocalState) -> Result<()> {
         box_try!(self.0.put_msg(raft_group_id, RAFT_LOG_STATE_KEY, state));
         Ok(())
@@ -159,6 +163,7 @@ impl RaftEngine for RaftLogEngine {
         Ok(self.0.compact_to(raft_group_id, to) as usize)
     }
 
+    // INSTRUMENT_FUNC
     fn purge_expired_files(&self) -> Result<Vec<u64>> {
         let ret = box_try!(self.0.purge_expired_files());
         Ok(ret)
@@ -193,9 +198,16 @@ impl RaftEngine for RaftLogEngine {
 
 fn transfer_error(e: RaftEngineError) -> engine_traits::Error {
     match e {
-        RaftEngineError::StorageCompacted => engine_traits::Error::EntriesCompacted,
-        RaftEngineError::StorageUnavailable => engine_traits::Error::EntriesUnavailable,
+        RaftEngineError::StorageCompacted => {
+            // INSTRUMENT_BB
+            engine_traits::Error::EntriesCompacted
+        }
+        RaftEngineError::StorageUnavailable => {
+            // INSTRUMENT_BB
+            engine_traits::Error::EntriesUnavailable
+        }
         e => {
+            // INSTRUMENT_BB
             let e = box_err!(e);
             engine_traits::Error::Other(e)
         }

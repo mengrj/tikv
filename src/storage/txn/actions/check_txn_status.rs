@@ -94,14 +94,20 @@ pub fn check_txn_status_missing_lock(
     match reader.get_txn_commit_record(&primary_key)? {
         TxnCommitRecord::SingleRecord { commit_ts, write } => {
             if write.write_type == WriteType::Rollback {
+                // INSTRUMENT_BB
                 Ok(TxnStatus::RolledBack)
             } else {
+                // INSTRUMENT_BB
                 Ok(TxnStatus::committed(commit_ts))
             }
         }
-        TxnCommitRecord::OverlappedRollback { .. } => Ok(TxnStatus::RolledBack),
+        TxnCommitRecord::OverlappedRollback { .. } => {
+            // INSTRUMENT_BB
+            Ok(TxnStatus::RolledBack)
+        }
         TxnCommitRecord::None { overlapped_write } => {
             if MissingLockAction::ReturnError == action {
+                // INSTRUMENT_BB
                 return Err(ErrorInner::TxnNotFound {
                     start_ts: reader.start_ts,
                     key: primary_key.into_raw()?,
@@ -217,16 +223,20 @@ pub enum MissingLockAction {
 impl MissingLockAction {
     pub fn rollback_protect(protect_rollback: bool) -> MissingLockAction {
         if protect_rollback {
+            // INSTRUMENT_BB
             MissingLockAction::ProtectedRollback
         } else {
+            // INSTRUMENT_BB
             MissingLockAction::Rollback
         }
     }
 
     pub fn rollback(rollback_if_not_exist: bool) -> MissingLockAction {
         if rollback_if_not_exist {
+            // INSTRUMENT_BB
             MissingLockAction::ProtectedRollback
         } else {
+            // INSTRUMENT_BB
             MissingLockAction::ReturnError
         }
     }

@@ -329,12 +329,17 @@ impl<S: Snapshot> BackwardKvScanner<S> {
 
             match write.write_type {
                 WriteType::Put => {
+                    // INSTRUMENT_BB
                     let write = write.to_owned();
                     return Ok(Some(self.reverse_load_data_by_write(write, user_key)?));
                 }
-                WriteType::Delete => return Ok(None),
+                WriteType::Delete => {
+                    // INSTRUMENT_BB
+                    return Ok(None)
+                }
                 WriteType::Lock | WriteType::Rollback => {
                     // Continue iterate next `write`.
+                    // INSTRUMENT_BB
                     self.write_cursor.next(&mut self.statistics.write);
                     assert!(self.write_cursor.valid()?);
                 }

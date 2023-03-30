@@ -652,6 +652,7 @@ where
     }
 
     /// Updates replication mode.
+    // INSTRUMENT_FUNC
     pub fn switch_replication_mode(&mut self, state: &Mutex<GlobalReplicationState>) {
         self.replication_sync = false;
         let mut guard = state.lock().unwrap();
@@ -686,6 +687,7 @@ where
 
     /// Register self to apply_scheduler so that the peer is then usable.
     /// Also trigger `RegionChangeEvent::Create` here.
+    // INSTRUMENT_FUNC
     pub fn activate<T>(&self, ctx: &PollContext<EK, ER, T>) {
         ctx.apply_router
             .schedule_task(self.region_id, ApplyTask::register(self));
@@ -1035,6 +1037,7 @@ where
         self.raft_group.snap()
     }
 
+    // INSTRUMENT_FUNC
     fn add_ready_metric(&self, ready: &Ready, metrics: &mut RaftReadyMetrics) {
         metrics.message += ready.messages().len() as u64;
         metrics.commit += ready.committed_entries().len() as u64;
@@ -1045,6 +1048,7 @@ where
         }
     }
 
+    // INSTRUMENT_FUNC
     fn add_light_ready_metric(&self, light_ready: &LightReady, metrics: &mut RaftReadyMetrics) {
         metrics.message += light_ready.messages().len() as u64;
         metrics.commit += light_ready.committed_entries().len() as u64;
@@ -1092,6 +1096,7 @@ where
                     // network partition from the new leader.
                     // For lease safety during leader transfer, transit `leader_lease`
                     // to suspect.
+                    // INSTRUMENT_BB
                     self.leader_lease.suspect(monotonic_raw_now());
 
                     metrics.timeout_now[i] += 1;
@@ -1349,12 +1354,14 @@ where
         // should be.
         match self.leader_missing_time {
             None => {
+                // INSTRUMENT_BB
                 self.leader_missing_time = Instant::now().into();
                 StaleState::Valid
             }
             Some(instant) if instant.elapsed() >= ctx.cfg.max_leader_missing_duration.0 => {
                 // Resets the `leader_missing_time` to avoid sending the same tasks to
                 // PD worker continuously during the leader missing timeout.
+                // INSTRUMENT_BB
                 self.leader_missing_time = Instant::now().into();
                 StaleState::ToValidate
             }
@@ -1365,6 +1372,7 @@ where
                 // A peer is considered as in the leader missing state
                 // if it's initialized but is isolated from its leader or
                 // something bad happens that the raft group can not elect a leader.
+                // INSTRUMENT_BB
                 StaleState::LeaderMissing
             }
             _ => StaleState::Valid,
@@ -1400,6 +1408,7 @@ where
                     // TODO: Maybe the predecessor should just drop all the read requests directly?
                     // All the requests need to be redirected in the end anyway and executing
                     // prewrites or commits will be just a waste.
+                    // INSTRUMENT_BB
                     self.last_urgent_proposal_idx = self.raft_group.raft.raft_log.last_index();
                     self.raft_group.skip_bcast_commit(false);
 
@@ -1408,6 +1417,7 @@ where
                     self.require_updating_max_ts(&ctx.pd_scheduler);
                 }
                 StateRole::Follower => {
+                    // INSTRUMENT_BB
                     self.leader_lease.expire();
                     self.mut_store().cancel_generating_snap(None);
                 }
@@ -1439,6 +1449,7 @@ where
     /// then send the response. The second place is in `Step`, we should use the commit index
     /// of `PeerStorage` which is the greatest commit index that can be observed outside.
     /// The third place is in `read_index`, handle it like the second one.
+    // INSTRUMENT_FUNC
     fn on_leader_commit_idx_changed(&mut self, pre_commit_index: u64, commit_index: u64) {
         if commit_index <= pre_commit_index || !self.is_leader() {
             return;
@@ -1547,6 +1558,7 @@ where
         // problem if the leader applies fewer values than the follower, the follower read
         // could get a newer value, and after that, the leader may read a stale value,
         // which violates linearizability.
+        // INSTRUMENT_BB
         self.get_store().applied_index() >= read_index
             // If it is in pending merge state(i.e. applied PrepareMerge), the data may be stale.
             // TODO: Add a test to cover this case
@@ -1636,6 +1648,7 @@ where
                 //      msg to this peer, this possibility is very low. In most cases, there
                 //      is no msg need to be handled.
                 // So we choose to not get a new ready which makes the logic more clear.
+                // INSTRUMENT_BB
                 debug!(
                     "still applying snapshot, skip further handling";
                     "region_id" => self.region_id,
@@ -1644,6 +1657,7 @@ where
                 return None;
             }
             CheckApplyingSnapStatus::Success => {
+                // INSTRUMENT_BB
                 fail_point!("raft_before_applying_snap_finished");
                 // 0 means snapshot is scheduled after being restarted.
                 if self.last_unpersisted_number != 0 {
@@ -1672,6 +1686,7 @@ where
                 // the peer, it's still dengerous if continue to handle ready for the
                 // peer. So it's better to revoke `JOB_STATUS_CANCELLING` to ensure all
                 // started tasks can get finished correctly.
+                // INSTRUMENT_BB
             }
         }
 
@@ -1965,6 +1980,7 @@ where
         assert_eq!(ready.number(), self.last_unpersisted_number);
         if !ready.snapshot().is_empty() {
             // Snapshot's metadata has been applied.
+            // INSTRUMENT_BB
             self.last_applying_idx = self.get_store().truncated_index();
             self.raft_group.advance_append_async(ready);
             // The ready is persisted, but we don't want to handle following light
@@ -2340,16 +2356,30 @@ where
         let policy = self.inspect(&req);
         let res = match policy {
             Ok(RequestPolicy::ReadLocal) | Ok(RequestPolicy::StaleRead) => {
+                // INSTRUMENT_BB
                 self.read_local(ctx, req, cb);
                 return false;
             }
-            Ok(RequestPolicy::ReadIndex) => return self.read_index(ctx, req, err_resp, cb),
-            Ok(RequestPolicy::ProposeNormal) => self.propose_normal(ctx, req),
+            Ok(RequestPolicy::ReadIndex) => {
+                // INSTRUMENT_BB
+                return self.read_index(ctx, req, err_resp, cb)
+            }
+            Ok(RequestPolicy::ProposeNormal) => {
+                // INSTRUMENT_BB
+                self.propose_normal(ctx, req)
+            }
             Ok(RequestPolicy::ProposeTransferLeader) => {
+                // INSTRUMENT_BB
                 return self.propose_transfer_leader(ctx, req, cb);
             }
-            Ok(RequestPolicy::ProposeConfChange) => self.propose_conf_change(ctx, &req),
-            Err(e) => Err(e),
+            Ok(RequestPolicy::ProposeConfChange) => {
+                // INSTRUMENT_BB
+                self.propose_conf_change(ctx, &req)
+            }
+            Err(e) => {
+                // INSTRUMENT_BB
+                Err(e)
+            }
         };
 
         match res {

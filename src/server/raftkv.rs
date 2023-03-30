@@ -194,6 +194,7 @@ where
         }
     }
 
+    // INSTRUMENT_FUNC
     pub fn set_txn_extra_scheduler(&mut self, txn_extra_scheduler: Arc<dyn TxnExtraScheduler>) {
         self.txn_extra_scheduler = Some(txn_extra_scheduler);
     }
@@ -211,6 +212,7 @@ where
         header
     }
 
+    // INSTRUMENT_FUNC
     fn exec_snapshot(
         &self,
         ctx: SnapContext<'_>,
@@ -241,6 +243,7 @@ where
             .map_err(From::from)
     }
 
+    // INSTRUMENT_FUNC
     fn exec_write_requests(
         &self,
         ctx: &Context,
@@ -341,6 +344,7 @@ where
         self.engine.clone()
     }
 
+    // INSTRUMENT_FUNC
     fn snapshot_on_kv_engine(&self, start_key: &[u8], end_key: &[u8]) -> kv::Result<Self::Snap> {
         let mut region = metapb::Region::default();
         region.set_start_key(start_key.to_owned());
@@ -357,14 +361,17 @@ where
         for modify in &mut modifies {
             match modify {
                 Modify::Delete(_, ref mut key) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key.as_encoded());
                     *key = Key::from_encoded(bytes);
                 }
                 Modify::Put(_, ref mut key, _) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key.as_encoded());
                     *key = Key::from_encoded(bytes);
                 }
                 Modify::DeleteRange(_, ref mut key1, ref mut key2, _) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key1.as_encoded());
                     *key1 = Key::from_encoded(bytes);
                     let bytes = keys::data_end_key(key2.as_encoded());
@@ -417,6 +424,7 @@ where
                     Err(box_err!("unexpect snapshot, should mutate instead.")),
                 )),
                 Err(e) => {
+                    // INSTRUMENT_BB
                     let status_kind = get_status_kind_from_engine_error(&e);
                     ASYNC_REQUESTS_COUNTER_VEC.write.get(status_kind).inc();
                     write_cb((cb_ctx, Err(e)))
