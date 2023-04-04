@@ -397,7 +397,7 @@ impl<K: PrewriteKind> Prewriter<K> {
             }
             .into())
         } else {
-            INSTRUMENT_BB
+            // INSTRUMENT_BB
             Ok(())
         }
     }
