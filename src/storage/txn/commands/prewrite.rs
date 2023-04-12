@@ -414,12 +414,14 @@ impl<K: PrewriteKind> Prewriter<K> {
     fn check_max_ts_synced(&self, snapshot: &impl Snapshot) -> Result<()> {
         if (self.secondary_keys.is_some() || self.try_one_pc) && !snapshot.ext().is_max_ts_synced()
         {
+            // INSTRUMENT_BB
             Err(ErrorInner::MaxTimestampNotSynced {
                 region_id: self.ctx.get_region_id(),
                 start_ts: self.start_ts,
             }
             .into())
         } else {
+            // INSTRUMENT_BB
             Ok(())
         }
     }

@@ -162,12 +162,14 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager, F: KvFor
     ) -> RaftStoreResult<()> {
         let to_store_id = msg.get_to_peer().get_store_id();
         if to_store_id != store_id {
+            // INSTRUMENT_BB
             return Err(RaftStoreError::StoreNotMatch {
                 to_store_id,
                 my_store_id: store_id,
             });
         }
         if reject && msg.get_message().get_msg_type() == MessageType::MsgAppend {
+            // INSTRUMENT_BB
             RAFT_APPEND_REJECTS.inc();
             let id = msg.get_region_id();
             let peer_id = msg.get_message().get_from();
@@ -755,6 +757,7 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager, F: KvFor
         });
     }
 
+    // INSTRUMENT_FUNC
     fn snapshot(
         &mut self,
         ctx: RpcContext<'_>,

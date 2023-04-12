@@ -181,6 +181,7 @@ pub fn send_snap(
         drop(client);
         match recv_result {
             Ok(_) => {
+                // INSTRUMENT_BB
                 fail_point!("snapshot_delete_after_send");
                 mgr.delete_snapshot(&key, &*chunks.snap, true);
                 // TODO: improve it after rustc resolves the bug.
@@ -192,7 +193,9 @@ pub fn send_snap(
                     elapsed: timer.saturating_elapsed(),
                 })
             }
-            Err(e) => Err(e),
+            Err(e) => 
+                // INSTRUMENT_BB
+                Err(e),
         }
     };
     Ok(send_task)
@@ -476,9 +479,11 @@ where
                 self.pool.spawn(task);
             }
             Task::RefreshConfigEvent => {
+                // INSTRUMENT_BB
                 self.refresh_cfg();
             }
             Task::Validate(f) => {
+                // INSTRUMENT_BB
                 f(&self.cfg);
             }
         }

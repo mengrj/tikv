@@ -445,6 +445,7 @@ impl<S: Snapshot> ScanPolicy<S> for LatestKvPolicy {
 
             match write.write_type {
                 WriteType::Put => {
+                    // INSTRUMENT_BB
                     if cfg.omit_value {
                         break Some(vec![]);
                     }
@@ -467,9 +468,12 @@ impl<S: Snapshot> ScanPolicy<S> for LatestKvPolicy {
                         }
                     }
                 }
-                WriteType::Delete => break None,
+                WriteType::Delete => 
+                    // INSTRUMENT_BB
+                    break None,
                 WriteType::Lock | WriteType::Rollback => {
                     // Continue iterate next `write`.
+                    // INSTRUMENT_BB
                 }
             }
 
@@ -1145,6 +1149,7 @@ mod latest_kv_tests {
         // After get the value, use 1 next to reach next user key:
         //   a_7 b_4 b_3 b_2 b_1 b_0
         //       ^cursor
+        // INSTRUMENT_BB
         assert_eq!(
             scanner.next().unwrap(),
             Some((Key::from_raw(b"a"), b"value".to_vec())),
@@ -1638,6 +1643,7 @@ mod latest_entry_tests {
             .commit_ts(7.into())
             .build_commit(WriteType::Put, true);
         let size = entry.size();
+        // INSTRUMENT_BB
         assert_eq!(scanner.next_entry().unwrap(), Some(entry),);
         let statistics = scanner.take_statistics();
         assert_eq!(statistics.write.seek, 1);
@@ -1711,6 +1717,7 @@ mod latest_entry_tests {
             .commit_ts(16.into())
             .build_commit(WriteType::Put, true);
         let size = entry.size();
+        // INSTRUMENT_BB
         assert_eq!(scanner.next_entry().unwrap(), Some(entry),);
         let statistics = scanner.take_statistics();
         assert_eq!(statistics.write.seek, 1);

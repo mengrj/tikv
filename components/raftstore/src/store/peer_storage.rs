@@ -380,6 +380,7 @@ impl EntryCache {
     fn shrink_if_necessary(&mut self) -> i64 {
         if self.cache.len() < SHRINK_CACHE_CAPACITY && self.cache.capacity() > SHRINK_CACHE_CAPACITY
         {
+            // INSTRUMENT_BB
             let old_capacity = self.cache.capacity();
             self.cache.shrink_to_fit();
             let new_capacity = self.cache.capacity();
@@ -595,6 +596,7 @@ fn validate_states<EK: KvEngine, ER: RaftEngine>(
     // The commit index of raft state may be less than the recorded commit index.
     // If so, forward the commit index.
     if commit_index < recorded_commit_index {
+        // INSTRUMENT_BB
         let entry = engines.raft.get_entry(region_id, recorded_commit_index)?;
         if entry.map_or(true, |e| e.get_term() != apply_state.get_commit_term()) {
             return Err(box_err!(
@@ -609,6 +611,7 @@ fn validate_states<EK: KvEngine, ER: RaftEngine>(
     }
     // Invariant: applied index <= max(commit index, recorded commit index)
     if apply_state.get_applied_index() > commit_index {
+        // INSTRUMENT_BB
         return Err(box_err!(
             "applied index > max(commit index, recorded commit index), {}",
             state_str()
@@ -616,6 +619,7 @@ fn validate_states<EK: KvEngine, ER: RaftEngine>(
     }
     // Invariant: max(commit index, recorded commit index) <= last index
     if commit_index > last_index {
+        // INSTRUMENT_BB
         return Err(box_err!(
             "max(commit index, recorded commit index) > last index, {}",
             state_str()
@@ -624,12 +628,14 @@ fn validate_states<EK: KvEngine, ER: RaftEngine>(
     // Since the entries must be persisted before applying, the term of raft state should also
     // be persisted. So it should be greater than the commit term of apply state.
     if raft_state.get_hard_state().get_term() < apply_state.get_commit_term() {
+        // INSTRUMENT_BB
         return Err(box_err!(
             "term of raft state < commit term of apply state, {}",
             state_str()
         ));
     }
 
+    // INSTRUMENT_BB
     raft_state.mut_hard_state().set_commit(commit_index);
 
     Ok(())
@@ -1267,11 +1273,16 @@ where
             last_canceled = canceled.load(Ordering::SeqCst);
             match receiver.try_recv() {
                 Err(TryRecvError::Empty) => {
+                    // INSTRUMENT_BB
                     let e = raft::StorageError::SnapshotTemporarilyUnavailable;
                     return Err(raft::Error::Store(e));
                 }
-                Ok(s) if !last_canceled => snap = Some(s),
-                Err(TryRecvError::Disconnected) | Ok(_) => {}
+                Ok(s) if !last_canceled => 
+                    // INSTRUMENT_BB
+                    snap = Some(s),
+                Err(TryRecvError::Disconnected) | Ok(_) => {
+                    // INSTRUMENT_BB
+                }
             }
         }
 
@@ -1384,11 +1395,13 @@ where
         self.last_term = last_term;
     }
 
+    // INSTRUMENT_FUNC
     pub fn on_compact_raftlog(&mut self, idx: u64) {
         self.compact_entry_cache(idx);
         self.cancel_generating_snap(Some(idx));
     }
 
+    // INSTRUMENT_FUNC
     pub fn compact_entry_cache(&mut self, idx: u64) {
         self.cache.compact_to(idx);
     }
@@ -1418,6 +1431,7 @@ where
     }
 
     // Apply the peer with given snapshot.
+    // INSTRUMENT_FUNC
     pub fn apply_snapshot(
         &mut self,
         snap: &Snapshot,
@@ -1618,6 +1632,7 @@ where
     }
 
     /// Cancel applying snapshot, return true if the job can be considered not be run again.
+    // INSTRUMENT_FUNC
     pub fn cancel_applying_snap(&mut self) -> bool {
         let is_canceled = match *self.snap_state.borrow() {
             SnapState::Applying(ref status) => {
@@ -1657,6 +1672,7 @@ where
     }
 
     /// Cancel generating snapshot.
+    // INSTRUMENT_FUNC
     pub fn cancel_generating_snap(&mut self, compact_to: Option<u64>) {
         let snap_state = self.snap_state.borrow();
         if let SnapState::Generating {
@@ -1678,6 +1694,7 @@ where
     }
 
     #[inline]
+    // INSTRUMENT_FUNC
     pub fn set_snap_state(&mut self, state: SnapState) {
         *self.snap_state.borrow_mut() = state
     }

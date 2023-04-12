@@ -90,6 +90,7 @@ where
             .force_send(region_id, PeerMsg::SignificantMsg(msg))
         {
             // TODO: panic here once we can detect system is shutting down reliably.
+            // INSTRUMENT_BB
             error!("failed to send significant msg"; "msg" => ?msg);
             return Err(Error::RegionNotFound(region_id));
         }

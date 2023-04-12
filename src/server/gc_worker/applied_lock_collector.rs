@@ -196,6 +196,7 @@ impl QueryObserver for LockObserver {
             let lock = match Lock::parse(put_request.get_value()) {
                 Ok(l) => l,
                 Err(e) => {
+                    // INSTRUMENT_BB
                     error!(?e;
                         "cannot parse lock";
                         "value" => log_wrappers::Value::value(put_request.get_value()),
@@ -300,14 +301,17 @@ impl LockCollectorRunner {
         let curr_max_ts = self.observer_state.load_max_ts();
         match max_ts.cmp(&curr_max_ts) {
             Less => Err(box_err!(
+                // INSTRUMENT_BB
                 "collecting locks with a greater max_ts: {}",
                 curr_max_ts
             )),
             Equal => {
                 // Stale request. Ignore it.
+                // INSTRUMENT_BB
                 Ok(())
             }
             Greater => {
+                // INSTRUMENT_BB
                 info!("start collecting locks"; "max_ts" => max_ts);
                 self.collected_locks.clear();
                 // TODO: `is_clean` may be unexpectedly set to false here, if any error happens on a
@@ -373,14 +377,19 @@ impl Runnable for LockCollectorRunner {
 
     fn run(&mut self, task: LockCollectorTask) {
         match task {
-            LockCollectorTask::ObservedLocks(locks) => self.handle_observed_locks(locks),
+            LockCollectorTask::ObservedLocks(locks) => 
+                // INSTRUMENT_BB
+                self.handle_observed_locks(locks),
             LockCollectorTask::StartCollecting { max_ts, callback } => {
+                // INSTRUMENT_BB
                 callback(self.start_collecting(max_ts))
             }
             LockCollectorTask::GetCollectedLocks { max_ts, callback } => {
+                // INSTRUMENT_BB
                 callback(self.get_collected_locks(max_ts))
             }
             LockCollectorTask::StopCollecting { max_ts, callback } => {
+                // INSTRUMENT_BB
                 callback(self.stop_collecting(max_ts))
             }
         }

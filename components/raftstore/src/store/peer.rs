@@ -1029,6 +1029,7 @@ where
     }
 
     /// Updates replication mode.
+    // INSTRUMENT_FUNC
     pub fn switch_replication_mode(&mut self, state: &Mutex<GlobalReplicationState>) {
         self.replication_sync = false;
         let mut guard = state.lock().unwrap();
@@ -1063,6 +1064,7 @@ where
 
     /// Register self to apply_scheduler so that the peer is then usable.
     /// Also trigger `RegionChangeEvent::Create` here.
+    // INSTRUMENT_FUNC
     pub fn activate<T>(&self, ctx: &PollContext<EK, ER, T>) {
         ctx.apply_router
             .schedule_task(self.region_id, ApplyTask::register(self));
@@ -1545,6 +1547,7 @@ where
         self.raft_group.snap()
     }
 
+    // INSTRUMENT_FUNC
     fn add_ready_metric(&self, ready: &Ready, metrics: &mut RaftReadyMetrics) {
         metrics.message += ready.messages().len() as u64;
         metrics.commit += ready.committed_entries().len() as u64;
@@ -1555,6 +1558,7 @@ where
         }
     }
 
+    // INSTRUMENT_FUNC
     fn add_light_ready_metric(&self, light_ready: &LightReady, metrics: &mut RaftReadyMetrics) {
         metrics.message += light_ready.messages().len() as u64;
         metrics.commit += light_ready.committed_entries().len() as u64;
@@ -1576,6 +1580,7 @@ where
         for msg in msgs {
             let msg_type = msg.get_message().get_msg_type();
             if msg_type == MessageType::MsgSnapshot {
+                // INSTRUMENT_BB
                 let snap_index = msg.get_message().get_snapshot().get_metadata().get_index();
                 if snap_index > self.last_sent_snapshot_idx {
                     self.last_sent_snapshot_idx = snap_index;
@@ -1605,6 +1610,7 @@ where
             );
 
             if let Err(e) = ctx.trans.send(msg) {
+                // INSTRUMENT_BB
                 // We use metrics to observe failure on production.
                 debug!(
                     "failed to send msg to other peer";
@@ -1626,6 +1632,7 @@ where
                 }
                 ctx.raft_metrics.send_message.add(msg_type, false);
             } else {
+                // INSTRUMENT_BB
                 ctx.raft_metrics.send_message.add(msg_type, true);
             }
         }
@@ -1822,6 +1829,7 @@ where
         }
         self.down_peer_ids = down_peer_ids;
         if !self.down_peer_ids.is_empty() {
+            // INSTRUMENT_BB
             self.refill_disk_full_peers(ctx);
         }
         down_peers
@@ -1980,6 +1988,7 @@ where
         // should be.
         match self.leader_missing_time {
             None => {
+                // INSTRUMENT_BB
                 self.leader_missing_time = Instant::now().into();
                 StaleState::Valid
             }
@@ -1988,6 +1997,7 @@ where
             {
                 // Resets the `leader_missing_time` to avoid sending the same tasks to
                 // PD worker continuously during the leader missing timeout.
+                // INSTRUMENT_BB
                 self.leader_missing_time = Instant::now().into();
                 StaleState::ToValidate
             }
@@ -1998,6 +2008,7 @@ where
                 // A peer is considered as in the leader missing state
                 // if it's initialized but is isolated from its leader or
                 // something bad happens that the raft group can not elect a leader.
+                // INSTRUMENT_BB
                 StaleState::LeaderMissing
             }
             _ => StaleState::Valid,
@@ -2042,7 +2053,7 @@ where
                     self.require_updating_max_ts(&ctx.pd_scheduler);
                     // Init the in-memory pessimistic lock table when the peer becomes leader.
                     self.activate_in_memory_pessimistic_locks();
-
+                    // INSTRUMENT_BB
                     if !ctx.store_disk_usages.is_empty() {
                         self.refill_disk_full_peers(ctx);
                         debug!(
@@ -2053,6 +2064,7 @@ where
                     }
                 }
                 StateRole::Follower => {
+                    // INSTRUMENT_BB
                     self.leader_lease.expire();
                     self.mut_store().cancel_generating_snap(None);
                     self.clear_disk_full_peers(ctx);
@@ -2089,6 +2101,7 @@ where
     /// then send the response. The second place is in `Step`, we should use the commit index
     /// of `PeerStorage` which is the greatest commit index that can be observed outside.
     /// The third place is in `read_index`, handle it like the second one.
+    // INSTRUMENT_FUNC
     fn on_leader_commit_idx_changed(&mut self, pre_commit_index: u64, commit_index: u64) {
         if commit_index <= pre_commit_index || !self.is_leader() {
             return;
@@ -2276,6 +2289,7 @@ where
                 //      msg to this peer, this possibility is very low. In most cases, there
                 //      is no msg need to be handled.
                 // So we choose to not get a new ready which makes the logic more clear.
+                // INSTRUMENT_BB
                 debug!(
                     "still applying snapshot, skip further handling";
                     "region_id" => self.region_id,
@@ -2284,6 +2298,7 @@ where
                 return false;
             }
             CheckApplyingSnapStatus::Success => {
+                // INSTRUMENT_BB
                 fail_point!("raft_before_applying_snap_finished");
 
                 if let Some(snap_ctx) = self.apply_snap_ctx.take() {
@@ -2529,6 +2544,7 @@ where
         let mut has_write_ready = false;
         match &res {
             HandleReadyResult::SendIOTask | HandleReadyResult::Snapshot { .. } => {
+                // INSTRUMENT_BB
                 if !persisted_msgs.is_empty() {
                     task.messages = self.build_raft_messages(ctx, persisted_msgs);
                 }
@@ -2560,6 +2576,7 @@ where
                 }
             }
             HandleReadyResult::NoIOTask => {
+                // INSTRUMENT_BB
                 if let Some(last) = self.unpersisted_readies.back_mut() {
                     // Attach to the last unpersisted ready so that it can be considered to be
                     // persisted with the last ready at the same time.
@@ -2868,8 +2885,10 @@ where
         if self.apply_snap_ctx.is_some() && self.unpersisted_readies.is_empty() {
             // Since the snapshot must belong to the last ready, so if `unpersisted_readies`
             // is empty, it means this persisted number is the last one.
+            // INSTRUMENT_BB
             Some(self.on_persist_snapshot(ctx, number))
         } else {
+            // INSTRUMENT_BB
             None
         }
     }
@@ -3029,11 +3048,14 @@ where
                 && read.cmds()[0].0.get_requests()[0].get_cmd_type() == CmdType::ReadIndex;
 
             if is_read_index_request {
+                // INSTRUMENT_BB
                 self.response_read(&mut read, ctx, false);
             } else if self.ready_to_handle_unsafe_replica_read(read.read_index.unwrap()) {
+                // INSTRUMENT_BB
                 self.response_read(&mut read, ctx, true);
             } else {
                 // TODO: `ReadIndex` requests could be blocked.
+                // INSTRUMENT_BB
                 self.pending_reads.push_front(read);
                 break;
             }
@@ -3303,11 +3325,15 @@ where
         let policy = self.inspect(&req);
         let res = match policy {
             Ok(RequestPolicy::ReadLocal) | Ok(RequestPolicy::StaleRead) => {
+                // INSTRUMENT_BB
                 self.read_local(ctx, req, cb);
                 return false;
             }
-            Ok(RequestPolicy::ReadIndex) => return self.read_index(ctx, req, err_resp, cb),
+            Ok(RequestPolicy::ReadIndex) => 
+                // INSTRUMENT_BB
+                return self.read_index(ctx, req, err_resp, cb),
             Ok(RequestPolicy::ProposeTransferLeader) => {
+                // INSTRUMENT_BB
                 return self.propose_transfer_leader(ctx, req, cb);
             }
             Ok(RequestPolicy::ProposeNormal) => {
@@ -3357,11 +3383,16 @@ where
                         "propose failed: tikv disk full, cmd diskFullOpt={:?}, leader diskUsage={:?}",
                         disk_full_opt, ctx.self_disk_usage
                     );
+                    // INSTRUMENT_BB
                     Err(Error::DiskFull(stores, errmsg))
                 }
             }
-            Ok(RequestPolicy::ProposeConfChange) => self.propose_conf_change(ctx, &req),
-            Err(e) => Err(e),
+            Ok(RequestPolicy::ProposeConfChange) => 
+                // INSTRUMENT_BB
+                self.propose_conf_change(ctx, &req),
+            Err(e) => 
+                // INSTRUMENT_BB
+                Err(e),
         };
         fail_point!("after_propose");
 

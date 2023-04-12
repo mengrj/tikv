@@ -46,6 +46,7 @@ pub fn find_peer_mut(region: &mut metapb::Region, store_id: u64) -> Option<&mut 
         .find(|p| p.get_store_id() == store_id)
 }
 
+// INSTRUMENT_FUNC
 pub fn remove_peer(region: &mut metapb::Region, store_id: u64) -> Option<metapb::Peer> {
     region
         .get_peers()
@@ -55,6 +56,7 @@ pub fn remove_peer(region: &mut metapb::Region, store_id: u64) -> Option<metapb:
 }
 
 // a helper function to create peer easily.
+// INSTRUMENT_FUNC
 pub fn new_peer(store_id: u64, peer_id: u64) -> metapb::Peer {
     let mut peer = metapb::Peer::default();
     peer.set_store_id(store_id);
@@ -474,6 +476,7 @@ impl Lease {
     }
 
     /// Renew the lease to the bound.
+    // INSTRUMENT_FUNC
     pub fn renew(&mut self, send_ts: Timespec) {
         let bound = self.next_expired_time(send_ts);
         match self.bound {
@@ -500,6 +503,7 @@ impl Lease {
     }
 
     /// Suspect the lease to the bound.
+    // INSTRUMENT_FUNC
     pub fn suspect(&mut self, send_ts: Timespec) {
         self.expire_remote_lease();
         let bound = self.next_expired_time(send_ts);
@@ -525,6 +529,7 @@ impl Lease {
         }
     }
 
+    // INSTRUMENT_FUNC
     pub fn expire(&mut self) {
         self.expire_remote_lease();
         self.bound = None;
@@ -911,6 +916,7 @@ impl RegionReadProgressRegistry {
             .insert(region_id, read_progress)
     }
 
+    // INSTRUMENT_FUNC
     pub fn remove(&self, region_id: &u64) -> Option<Arc<RegionReadProgress>> {
         self.registry.lock().unwrap().remove(region_id)
     }
@@ -1097,6 +1103,7 @@ impl RegionReadProgress {
     }
 
     /// Reset `safe_ts` to 0 and stop updating it
+    // INSTRUMENT_FUNC
     pub fn pause(&self) {
         let mut core = self.core.lock().unwrap();
         core.pause = true;
@@ -1104,6 +1111,7 @@ impl RegionReadProgress {
     }
 
     /// Discard incoming `read_state` item and stop updating `safe_ts`
+    // INSTRUMENT_FUNC
     pub fn discard(&self) {
         let mut core = self.core.lock().unwrap();
         core.pause = true;
@@ -1111,6 +1119,7 @@ impl RegionReadProgress {
     }
 
     /// Reset `safe_ts` and resume updating it
+    // INSTRUMENT_FUNC
     pub fn resume(&self) {
         let mut core = self.core.lock().unwrap();
         core.pause = false;

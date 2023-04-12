@@ -126,15 +126,20 @@ impl GcManagerContext {
         match self.stop_signal_receiver.as_ref() {
             Some(rx) => match rx.recv_timeout(timeout) {
                 Ok(_) => {
+                    // INSTRUMENT_BB
                     self.is_stopped = true;
                     Err(GcManagerError::Stopped)
                 }
-                Err(mpsc::RecvTimeoutError::Timeout) => Ok(()),
+                Err(mpsc::RecvTimeoutError::Timeout) => 
+                    // INSTRUMENT_BB
+                    Ok(()),
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    // INSTRUMENT_BB
                     panic!("stop_signal_receiver unexpectedly disconnected")
                 }
             },
             None => {
+                // INSTRUMENT_BB
                 thread::sleep(timeout);
                 Ok(())
             }

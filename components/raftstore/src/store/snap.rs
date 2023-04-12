@@ -150,10 +150,12 @@ impl SnapKey {
     pub fn from_snap(snap: &RaftSnapshot) -> io::Result<SnapKey> {
         let mut snap_data = RaftSnapshotData::default();
         if let Err(e) = snap_data.merge_from_bytes(snap.get_data()) {
+            // INSTRUMENT_BB
             return Err(io::Error::new(ErrorKind::Other, e));
         }
 
         Ok(SnapKey::from_region_snap(
+            // INSTRUMENT_BB
             snap_data.get_region().get_id(),
             snap,
         ))
@@ -202,6 +204,7 @@ pub fn copy_snapshot(mut from: Box<Snapshot>, mut to: Box<Snapshot>) -> io::Resu
 }
 
 // Try to delete the specified snapshot, return true if the deletion is done.
+// INSTRUMENT_FUNC
 fn retry_delete_snapshot(mgr: &SnapManagerCore, key: &SnapKey, snap: &Snapshot) -> bool {
     let d = time::Duration::from_millis(DELETE_RETRY_TIME_MILLIS);
     for _ in 0..DELETE_RETRY_MAX_TIMES {

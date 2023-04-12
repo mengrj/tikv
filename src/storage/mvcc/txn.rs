@@ -135,6 +135,7 @@ impl MvccTxn {
         self.modifies.push(write);
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn delete_write(&mut self, key: Key, ts: TimeStamp) {
         let write = Modify::Delete(CF_WRITE, key.append_ts(ts));
         self.write_size += write.size();
@@ -149,6 +150,7 @@ impl MvccTxn {
     /// break consistency. To solve the problem, add the timestamp of the current rollback to the
     /// lock. So when the lock is committed, it can check if it will overwrite a rollback record
     /// by checking the information in the lock.
+    // INSTRUMENT_FUNC
     pub(crate) fn mark_rollback_on_mismatching_lock(
         &mut self,
         key: &Key,
@@ -177,6 +179,7 @@ impl MvccTxn {
         self.put_lock(key.clone(), &lock);
     }
 
+    // INSTRUMENT_FUNC
     pub(crate) fn clear(&mut self) {
         self.write_size = 0;
         self.modifies.clear();

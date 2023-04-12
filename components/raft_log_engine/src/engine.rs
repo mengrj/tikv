@@ -98,6 +98,7 @@ impl Write for ManagedWriter {
 }
 
 impl WriteExt for ManagedWriter {
+    // INSTRUMENT_FUNC
     fn truncate(&mut self, offset: usize) -> IoResult<()> {
         self.seek(SeekFrom::Start(offset as u64))?;
         match self.inner.as_mut() {
@@ -106,6 +107,7 @@ impl WriteExt for ManagedWriter {
         }
     }
 
+    // INSTRUMENT_FUNC
     fn sync(&mut self) -> IoResult<()> {
         match self.inner.as_mut() {
             Either::Left(writer) => writer.sync(),
@@ -113,6 +115,7 @@ impl WriteExt for ManagedWriter {
         }
     }
 
+    // INSTRUMENT_FUNC
     fn allocate(&mut self, offset: usize, size: usize) -> IoResult<()> {
         match self.inner.as_mut() {
             Either::Left(writer) => writer.allocate(offset, size),
@@ -146,6 +149,7 @@ pub struct ManagedHandle {
 }
 
 impl Handle for ManagedHandle {
+    // INSTRUMENT_FUNC
     fn truncate(&self, offset: usize) -> IoResult<()> {
         self.base.truncate(offset)
     }
@@ -178,6 +182,7 @@ impl FileSystem for ManagedFileSystem {
         })
     }
 
+    // INSTRUMENT_FUNC
     fn delete<P: AsRef<Path>>(&self, path: P) -> IoResult<()> {
         if let Some(ref manager) = self.key_manager {
             manager.delete_file(path.as_ref().to_str().unwrap())?;
@@ -196,6 +201,7 @@ impl FileSystem for ManagedFileSystem {
         self.base_file_system.exists_metadata(path)
     }
 
+    // INSTRUMENT_FUNC
     fn delete_metadata<P: AsRef<Path>>(&self, path: P) -> IoResult<()> {
         if let Some(ref manager) = self.key_manager {
             // Note: no error if the file doesn't exist.
@@ -377,10 +383,12 @@ impl RaftEngine for RaftLogEngine {
         self.0.sync().map_err(transfer_error)
     }
 
+    // INSTRUMENT_FUNC
     fn consume(&self, batch: &mut Self::LogBatch, sync: bool) -> Result<usize> {
         self.0.write(&mut batch.0, sync).map_err(transfer_error)
     }
 
+    // INSTRUMENT_FUNC
     fn consume_and_shrink(
         &self,
         batch: &mut Self::LogBatch,
@@ -391,6 +399,7 @@ impl RaftEngine for RaftLogEngine {
         self.0.write(&mut batch.0, sync).map_err(transfer_error)
     }
 
+    // INSTRUMENT_FUNC
     fn clean(
         &self,
         raft_group_id: u64,
@@ -445,6 +454,7 @@ impl RaftEngine for RaftLogEngine {
         Ok(total as usize)
     }
 
+    // INSTRUMENT_FUNC
     fn purge_expired_files(&self) -> Result<Vec<u64>> {
         self.0.purge_expired_files().map_err(transfer_error)
     }

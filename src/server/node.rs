@@ -392,10 +392,13 @@ where
         store_id: u64,
     ) -> Result<Option<metapb::Region>> {
         if let Some(first_region) = engines.kv.get_msg(keys::PREPARE_BOOTSTRAP_KEY)? {
+            // INSTRUMENT_BB
             Ok(Some(first_region))
         } else if self.check_cluster_bootstrapped()? {
+            // INSTRUMENT_BB
             Ok(None)
         } else {
+            // INSTRUMENT_BB
             self.prepare_bootstrap_cluster(engines, store_id).map(Some)
         }
     }

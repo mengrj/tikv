@@ -198,6 +198,7 @@ where
         header
     }
 
+    // INSTRUMENT_FUNC
     fn exec_snapshot(
         &self,
         ctx: SnapContext<'_>,
@@ -322,6 +323,7 @@ where
         self.engine.clone()
     }
 
+    // INSTRUMENT_FUNC
     fn snapshot_on_kv_engine(&self, start_key: &[u8], end_key: &[u8]) -> kv::Result<Self::Snap> {
         let mut region = metapb::Region::default();
         region.set_start_key(start_key.to_owned());
@@ -338,18 +340,22 @@ where
         for modify in &mut modifies {
             match modify {
                 Modify::Delete(_, ref mut key) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key.as_encoded());
                     *key = Key::from_encoded(bytes);
                 }
                 Modify::Put(_, ref mut key, _) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key.as_encoded());
                     *key = Key::from_encoded(bytes);
                 }
                 Modify::PessimisticLock(ref mut key, _) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key.as_encoded());
                     *key = Key::from_encoded(bytes);
                 }
                 Modify::DeleteRange(_, ref mut key1, ref mut key2, _) => {
+                    // INSTRUMENT_BB
                     let bytes = keys::data_key(key1.as_encoded());
                     *key1 = Key::from_encoded(bytes);
                     let bytes = keys::data_end_key(key2.as_encoded());
@@ -476,6 +482,7 @@ where
         })
     }
 
+    // INSTRUMENT_FUNC
     fn release_snapshot(&self) {
         self.router.release_snapshot_cache();
     }
